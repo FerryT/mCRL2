@@ -32,6 +32,7 @@ ToolInstance::ToolInstance(QString filename, ToolInformation information, mcrl2:
   QWidget(parent),
   m_filename(filename),
   m_info(information),
+  m_log(nullptr),
   m_fileDialog(fileDialog)
 {
   m_ui.setupUi(this);
@@ -39,8 +40,10 @@ ToolInstance::ToolInstance(QString filename, ToolInformation information, mcrl2:
   connect(this, SIGNAL(colorChanged(QColor)), this, SLOT(onColorChanged(QColor)));
 
   connect(&m_process, SIGNAL(stateChanged(QProcess::ProcessState)), this, SLOT(onStateChange(QProcess::ProcessState)));
-  connect(&m_process, SIGNAL(readyReadStandardOutput()), this, SLOT(onStandardOutput()));
-  connect(&m_process, SIGNAL(readyReadStandardError()), this, SLOT(onStandardError()));
+  connect(&m_process, &QProcess::readyReadStandardOutput, this,
+    [&]() { onOutputLog(m_process.readAllStandardOutput()); });
+  connect(&m_process, &QProcess::readyReadStandardError, this,
+    [&]() { onErrorLog(m_process.readAllStandardError()); });
   connect(m_ui.btnRun, SIGNAL(clicked()), this, SLOT(onRun()));
   connect(m_ui.btnAbort, SIGNAL(clicked()), this, SLOT(onAbort()));
   connect(m_ui.btnSave, SIGNAL(clicked()), this, SLOT(onSave()));
@@ -85,9 +88,16 @@ ToolInstance::ToolInstance(QString filename, ToolInformation information, mcrl2:
     m_ui.pckFileIn->setVisible(false);
   }
 
+  // Gui-based tools have a 'Open' button instead of a 'Run', and
+  // uses a detached log object that catches the output.
   if (m_info.guiTool)
   {
     m_ui.btnRun->setText("Open");
+    m_log = new DetachedLog;
+    connect(m_log, &DetachedLog::readyOutputLog, this,
+      [&](const QByteArray &text) { onOutputLog(text); });
+    connect(m_log, &DetachedLog::readyErrorLog, this,
+      [&](const QByteArray &text) { onErrorLog(text); });
   }
 
   QFormLayout *formLayout = new QFormLayout();
@@ -267,6 +277,11 @@ ToolInstance::~ToolInstance()
   {
     delete *option;
   }
+  if (m_log != nullptr)
+  {
+    delete m_log;
+    m_log = nullptr;
+  }
 }
 
 QString ToolInstance::executable()
@@ -349,13 +364,12 @@ void ToolInstance::onStateChange(QProcess::ProcessState state)
   }
 }
 
-void ToolInstance::onStandardOutput()
+void ToolInstance::onOutputLog(const QByteArray &outText)
 {
   QScrollBar* scrollbar = m_ui.edtOutput->verticalScrollBar();
   bool end = scrollbar->value() == scrollbar->maximum();
 
   m_ui.edtOutput->setTextColor(Qt::black);
-  QByteArray outText = m_process.readAllStandardOutput();
   m_ui.edtOutput->append(QString(outText).replace("\n\n", "\n"));
 
   if (end)
@@ -364,13 +378,12 @@ void ToolInstance::onStandardOutput()
   }
 }
 
-void ToolInstance::onStandardError()
+void ToolInstance::onErrorLog(const QByteArray &outText)
 {
   QScrollBar* scrollbar = m_ui.edtOutput->verticalScrollBar();
   bool end = scrollbar->value() == scrollbar->maximum();
 
   m_ui.edtOutput->setTextColor(Qt::black);
-  QByteArray outText = m_process.readAllStandardError();
   m_ui.edtOutput->append(QString(outText).replace("\n\n", "\n"));
 
   if (end)
@@ -399,25 +412,26 @@ void ToolInstance::onRun()
 
   // Start gui-based tools detached from the main executable
   bool success = false;
+  m_process.setProgram(executable());
+  m_process.setArguments(arguments());
   if (m_info.guiTool)
   {
-    success = m_process.startDetached(executable(), arguments(),
-      m_process.workingDirectory());
+    m_log->reset();
+    m_process.setStandardInputFile(QProcess::nullDevice());
+    m_process.setStandardOutputFile(m_log->outputFilename());
+    m_process.setStandardErrorFile(m_log->errorFilename());
+    success = m_process.startDetached(nullptr);
   }
   else
   {
-    m_process.start(executable(), arguments(), QIODevice::ReadOnly);
+    m_process.start(QIODevice::ReadOnly);
     success = m_process.waitForStarted(1000);
   }
 
   if (success)
   {
     mCRL2log(mcrl2::log::info) << "Started " << executable().toStdString() << std::endl;
-    if (!m_info.guiTool)
-    {
-      // Switch to logging tab for non-gui tools only, since gui-based tools do not log.
-      m_ui.tabWidget->setCurrentIndex(1);
-    }
+    m_ui.tabWidget->setCurrentIndex(1);
   }
   else
   {

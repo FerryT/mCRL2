@@ -17,6 +17,7 @@
 
 #include "toolinformation.h"
 #include "optionvalue.h"
+#include "detachedlog.h"
 
 class ToolInstance : public QWidget
 {
@@ -32,8 +33,8 @@ class ToolInstance : public QWidget
 
   public slots:
     void onStateChange(QProcess::ProcessState state);
-    void onStandardOutput();
-    void onStandardError();
+    void onOutputLog(const QByteArray &outText);
+    void onErrorLog(const QByteArray &outText);
     void onRun();
     void onAbort();
     void onSave();
@@ -47,6 +48,7 @@ class ToolInstance : public QWidget
 
     QList<OptionValue*> m_optionValues;
     QProcess m_process;
+    DetachedLog *m_log;
 
     FilePicker* m_pckFileOut;
     FilePicker* m_pckFileIn;
