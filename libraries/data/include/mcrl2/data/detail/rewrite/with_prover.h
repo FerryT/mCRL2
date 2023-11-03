@@ -9,8 +9,8 @@
 /// \file mcrl2/data/detail/rewrite/with_prover.h
 /// \brief Rewriting combined with semantic simplification using a prover
 
-#ifndef __REWR_PROVER_H
-#define __REWR_PROVER_H
+#ifndef MCRL2_DATA_DETAIL_REWR_PROVER_H
+#define MCRL2_DATA_DETAIL_REWR_PROVER_H
 
 #include "mcrl2/data/detail/prover/bdd_prover.h"
 
@@ -46,7 +46,7 @@ class RewriterProver: public Rewriter
       {
         case jitty:
           return jitty_prover;
-#ifdef MCRL2_JITTYC_AVAILABLE
+#ifdef MCRL2_ENABLE_JITTYC
         case jitty_compiling:
           return jitty_compiling_prover;
 #endif

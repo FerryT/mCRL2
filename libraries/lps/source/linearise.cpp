@@ -6183,10 +6183,12 @@ class specification_basic_type
       data_expression binarysumcondition;
       int equaluptillnow=1;
 
+      std::set<variable> all_sum_variables;
       for (const stochastic_action_summand& smmnd: action_summands)
       {
         const variable_list sumvars=smmnd.summation_variables();
         resultsum=merge_var(sumvars,resultsum,rename_list_pars,rename_list_args,conditionlist,parameters);
+        all_sum_variables.insert(sumvars.begin(),sumvars.end());
       }
 
       if (options.binary)
@@ -6517,7 +6519,8 @@ class specification_basic_type
         {
           const variable_list stochastic_vars=smmnd.distribution().variables();
           resulting_stochastic_variables=merge_var(stochastic_vars,resulting_stochastic_variables,
-                              stochastic_rename_list_pars,stochastic_rename_list_args,stochastic_conditionlist,parameters);
+                              stochastic_rename_list_pars,stochastic_rename_list_args,stochastic_conditionlist,
+                              parameters + variable_list(all_sum_variables.begin(),all_sum_variables.end()));
         }
 
         std::vector < variable_list >::const_iterator auxrename_list_pars=rename_list_pars.begin();
@@ -9212,6 +9215,7 @@ class specification_basic_type
 
         objectdatatype& object=objectIndex(process_instance_assignment(t).identifier());
 
+        // Now apply the assignment in this process to the obtained initial process and the distribution. 
         maintain_variables_in_rhs<mutable_map_substitution<> > sigma;
         for (const assignment& a: process_instance_assignment(t).assignments())
         {
@@ -9219,6 +9223,10 @@ class specification_basic_type
         }
 
         init=replace_variables_capture_avoiding_alt(init,sigma);
+        initial_stochastic_distribution = 
+                   stochastic_distribution(
+                         initial_stochastic_distribution.variables(),
+                         replace_variables_capture_avoiding_alt(initial_stochastic_distribution.distribution(), sigma));
 
         // Make the bound variables and parameters in this process unique.
 
@@ -9437,7 +9445,9 @@ class specification_basic_type
     /* The result are a list of action summands, deadlock summand, the parameters of this
        linear process and its initial values. A initial stochastic distribution that must
        precede the initial linear process and the ultimate delay condition of this
-       linear process that can be used or be ignored. */
+       linear process that can be used or be ignored. 
+
+    */
 
     void generateLPEmCRL(
       stochastic_action_summand_vector& action_summands,

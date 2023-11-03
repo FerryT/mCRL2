@@ -21,9 +21,16 @@
 #include "mcrl2/lps/parse.h"
 
 // For backwards compatibility
-//using namespace mcrl2::log;
 typedef mcrl2::log::log_level_t mcrl2_log_level_t;
-using mcrl2::log::mcrl2_logger;
+using mcrl2::log::logger;
+
+namespace mcrl2::log {
+  using mcrl2_logger = mcrl2::log::logger;
+}
+
+#ifdef MCRL2_ENABLE_JITTYC
+#define MCRL2_JITTYC_AVAILABLE
+#endif
 
 namespace mcrl2 {
 

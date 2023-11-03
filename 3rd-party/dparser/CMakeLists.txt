@@ -8,7 +8,6 @@
 
 # ########## Project setup ##########
 project(dparser)
-cmake_minimum_required(VERSION 3.8)
 
 add_definitions(
   -DD_MAJOR_VERSION=1
@@ -18,16 +17,18 @@ add_definitions(
 )
 
 if(MSVC)
-add_definitions(
-  -Dstrtoll=_strtoi64
-  -Dstrncasecmp=_strnicmp
-)
+  # MSVC complains about deprecated POSIX names, so this replaces those by other deprecated functions.
+  add_compile_definitions(
+    strtoll=_strtoi64
+    strnicmp=_strnicmp
+    strncasecmp=_strnicmp
+  )
 endif(MSVC)
 
 if(MSVC AND MSVC_VERSION LESS 1900)
-add_definitions(
-  -Dsnprintf=_snprintf
-)
+  add_compile_definitions(
+    snprintf=_snprintf
+  )
 endif(MSVC AND MSVC_VERSION LESS 1900)
 
 add_executable(make_dparser
@@ -45,7 +46,7 @@ add_library(mkdparse STATIC
   version.c
 )
 
-add_library(dparser STATIC
+add_library(dparser
   arg.c
   parse.c
   scan.c
@@ -55,6 +56,5 @@ add_library(dparser STATIC
   dparse_tree.c
 )
 
+target_include_directories(dparser PUBLIC ".")
 target_link_libraries(make_dparser PRIVATE mkdparse dparser)
-
-set(dparser_include ${CMAKE_CURRENT_SOURCE_DIR} PARENT_SCOPE)

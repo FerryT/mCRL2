@@ -13,6 +13,8 @@
 
 #include "mcrl2/utilities/logger.h"
 
+#include <thread>
+
 using namespace mcrl2::log;
 
 void print_all_log_levels()
@@ -32,7 +34,7 @@ void print_all_log_levels()
 BOOST_AUTO_TEST_CASE(test_logging_basic)
 {
   // Messages will only be printed up to debug, due to standard MCRL2_MAX_LOG_LEVEL
-  mcrl2_logger::set_reporting_level(debug2);
+  logger::set_reporting_level(debug2);
   print_all_log_levels();
 }
 
@@ -73,18 +75,6 @@ BOOST_AUTO_TEST_CASE(test_logging_multiline)
                  << "the last last line" << std::endl;
 }
 
-BOOST_AUTO_TEST_CASE(test_logging_hint)
-{
-  mcrl2_logger::set_reporting_level(info);
-  mCRL2log(debug, "test_hint") << "Testing hint, should not be printed" << std::endl;
-  mcrl2_logger::set_reporting_level(debug, "test_hint");
-  mCRL2log(debug, "test_hint") << "Testing hint, should be printed" << std::endl;
-  mCRL2log(debug) << "Testing hint, should not be printed" << std::endl;
-  mcrl2_logger::set_reporting_level(verbose, "test_hint");
-  mCRL2log(info) << "Testing hint, should still be printed" << std::endl;
-  mcrl2_logger::clear_reporting_level("test_hint");
-}
-
 BOOST_AUTO_TEST_CASE(test_file_logging)
 {
   FILE * pFile;
@@ -114,12 +104,12 @@ BOOST_AUTO_TEST_CASE(test_non_execution_of_arguments_static)
 }
 
 // Show that arguments to logging are not executed if the log level is larger
-// than mcrl2_logger::reporting_level() (i.e. the BOOST_CHECK(false) in test_assert() should
+// than logger::reporting_level() (i.e. the BOOST_CHECK(false) in test_assert() should
 // never be triggered.
 BOOST_AUTO_TEST_CASE(test_non_execution_of_arguments_dynamic)
 {
   BOOST_CHECK(MCRL2MaxLogLevel >= debug);
-  mcrl2_logger::set_reporting_level(verbose);
+  logger::set_reporting_level(verbose);
   mCRL2log(debug) << "This line should not end with BOOM! ............. " << test_assert() << std::endl;
 }
 
@@ -143,4 +133,19 @@ BOOST_AUTO_TEST_CASE(test_multiline_nonewline)
 BOOST_AUTO_TEST_CASE(test_enabled_constexpr)
 {
   static_assert(!mCRL2logEnabled(debug3), "This function should evaluate to false at compile time.");
+}
+
+BOOST_AUTO_TEST_CASE(test_parallel_logging)
+{
+  std::vector<std::thread> threads;
+
+  for (int i = 0; i < 10; ++i) {
+    threads.emplace_back([]() {
+      mCRL2log(info) << "A message";
+    });
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
 }

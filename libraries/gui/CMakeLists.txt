@@ -1,22 +1,26 @@
-if(Qt5Core_FOUND AND Qt5Widgets_FOUND)
-  add_mcrl2_library(gui
+if(MCRL2_ENABLE_GUI_TOOLS)
+
+  mcrl2_add_library(mcrl2_gui
     INSTALL_HEADERS TRUE
     SOURCES
-      arcball.cpp
-      logwidget.ui
-      logwidget.cpp
-      extendedtabwidget.cpp
-      codeeditor.cpp
-      persistentfiledialog.cpp
-      utilities.cpp
+      source/arcball.cpp
+      source/logwidget.ui
+      source/logwidget.cpp
+      source/extendedtabwidget.cpp
+      source/codeeditor.cpp
+      source/persistentfiledialog.cpp
+      source/utilities.cpp
     DEPENDS
       mcrl2_utilities
-      Qt5::Core
-      Qt5::Gui
-      Qt5::Widgets
-      Qt5::OpenGL
-      ${OPENGL_LIBRARIES}
-    INCLUDE
-      ${OPENGL_INCLUDE_DIR}
+      Qt6::Core
+      Qt6::Gui
+      Qt6::Widgets
+      Qt6::OpenGL
+      OpenGL::GL
   )
+
+  # Enable the CMake build system to automatically run MOC/UIC/RCC on source files that need it.
+  set_target_properties(mcrl2_gui PROPERTIES AUTOMOC TRUE)
+  set_target_properties(mcrl2_gui PROPERTIES AUTOUIC TRUE)
+  set_target_properties(mcrl2_gui PROPERTIES AUTORCC TRUE)
 endif()

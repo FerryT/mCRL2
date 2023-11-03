@@ -99,21 +99,14 @@ void aterm_pool::collect(mcrl2::utilities::shared_mutex& mutex)
 
 void aterm_pool::register_thread_aterm_pool(thread_aterm_pool_interface& pool)
 {
-#ifdef MCRL2_THREAD_SAFE
-  std::lock_guard guard(m_mutex);
-  mCRL2log(mcrl2::log::debug) << "Registered thread_local aterm pool\n";
-#endif
-
+  mcrl2::utilities::lock_guard guard = m_shared_mutex.lock();
   m_thread_pools.insert(m_thread_pools.end(), &pool);
 }
 
 void aterm_pool::remove_thread_aterm_pool(thread_aterm_pool_interface& pool)
 {
-#ifdef MCRL2_THREAD_SAFE
-  std::lock_guard guard(m_mutex);
-  mCRL2log(mcrl2::log::debug) << "Removed thread_local aterm pool\n";
-#endif
-
+  mcrl2::utilities::lock_guard guard = m_shared_mutex.lock();
+  
   auto it = std::find(m_thread_pools.begin(), m_thread_pools.end(), &pool);
   if (it != m_thread_pools.end())
   {
@@ -267,7 +260,7 @@ void aterm_pool::collect_impl(mcrl2::utilities::shared_mutex& shared_mutex)
       auto sweep_duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timestamp).count();
 
       // Print the relevant information.
-      mCRL2log(mcrl2::log::info, "Performance") << "g_term_pool(): Garbage collected " << old_size - size() << " terms, " << size() << " terms remaining in "
+      mCRL2log(mcrl2::log::info) << "g_term_pool(): Garbage collected " << old_size - size() << " terms, " << size() << " terms remaining in "
         << mark_duration + sweep_duration << " ms (marking " << mark_duration << " ms + sweep " << sweep_duration << " ms).\n";
     }
 
@@ -417,8 +410,8 @@ void aterm_pool::resize_if_needed(mcrl2::utilities::shared_mutex& mutex)
     // Only print if a resize actually took place.
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timestamp).count();
 
-    mCRL2log(mcrl2::log::info, "Performance") << "aterm_pool: Resized hash tables from " << old_capacity << " to " << capacity() << " capacity in "
-                                              << duration << " ms.\n";
+    mCRL2log(mcrl2::log::info) << "aterm_pool: Resized hash tables from " << old_capacity << " to " << capacity() << " capacity in "
+                               << duration << " ms.\n";
   }
 }
 

@@ -12,15 +12,13 @@
 using namespace mcrl2::gui;
 using namespace mcrl2::gui::qt;
 
-void LogRelay::output(const log_level_t level, 
-                      const std::string& hint, 
+void LogRelay::output(const log_level_t level,
                       const time_t timestamp, 
                       const std::string& msg, 
                       const bool /* print_time_information */)
 {
-  emit logMessage(QString::fromStdString(log_level_to_string(level)), 
-                  QString::fromStdString(hint), 
-                  QDateTime::fromTime_t(timestamp), 
+  emit logMessage(QString::fromStdString(log_level_to_string(level)),
+                  QDateTime::fromSecsSinceEpoch(timestamp), 
                   QString::fromStdString(msg));
 }
 
@@ -29,8 +27,8 @@ LogWidget::LogWidget(QWidget *parent)
     m_ui(new Ui::LogWidget)
 {
   m_ui->setupUi(this);
-  connect(&m_relay, SIGNAL(logMessage(QString, QString, QDateTime, QString)), this, SLOT(writeMessage(QString, QString, QDateTime, QString)));
-  mcrl2_logger::register_output_policy(m_relay);
+  connect(&m_relay, SIGNAL(logMessage(QString, QDateTime, QString)), this, SLOT(writeMessage(QString, QDateTime, QString)));
+  logger::register_output_policy(m_relay);
 }
 
 LogWidget::~LogWidget()
@@ -38,14 +36,12 @@ LogWidget::~LogWidget()
   delete m_ui;
 }
 
-void LogWidget::writeMessage(QString level, QString hint, QDateTime timestamp, QString message)
+void LogWidget::writeMessage(QString level, QDateTime timestamp, QString message)
 {
   message = message.trimmed();
   if (!message.isEmpty())
   {
-    if (!hint.isEmpty())
-      hint.append("::");
-    QString formattedMessage = QString("[%1 %2%3] %4").arg(timestamp.toString("hh:mm:ss")).arg(hint).arg(level).arg(message).trimmed();
+    QString formattedMessage = QString("[%1 %2] %3").arg(timestamp.toString("hh:mm:ss")).arg(level).arg(message).trimmed();
     switch (log_level_from_string(level.toStdString()))
     {
       case error:
@@ -60,6 +56,6 @@ void LogWidget::writeMessage(QString level, QString hint, QDateTime timestamp, Q
     }
 
     m_ui->editOutput->append(formattedMessage);
-    emit logMessage(level, hint, timestamp, message, formattedMessage);
+    emit logMessage(level, timestamp, message, formattedMessage);
   }
 }

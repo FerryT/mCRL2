@@ -12,8 +12,6 @@
 #ifndef MCRL2_PBES_PBESINST_STRUCTURE_GRAPH2_H
 #define MCRL2_PBES_PBESINST_STRUCTURE_GRAPH2_H
 
-#include <shared_mutex>
-
 #include "mcrl2/atermpp/standard_containers/deque.h"
 #include "mcrl2/atermpp/standard_containers/indexed_set.h"
 #include "mcrl2/atermpp/standard_containers/vector.h"
@@ -132,11 +130,6 @@ class pbesinst_structure_graph_algorithm2: public pbesinst_structure_graph_algor
        : S(S_), graph_builder(graph_builder_)
       {}
 
-      static void unexpected(const pbes_expression& x)
-      {
-        throw mcrl2::runtime_error("Unexpected term " + pbes_system::pp(x) + " encountered in Rplus");
-      }
-
       void push(const stack_element& elem)
       {
         stack.push_back(elem);
@@ -175,7 +168,7 @@ class pbesinst_structure_graph_algorithm2: public pbesinst_structure_graph_algor
         }
         else
         {
-          unexpected(x);
+         throw mcrl2::runtime_error("Fail to evaluate the expression " + pbes_system::pp(x) + " as it should be equal to true or false.");
         }
       }
 
@@ -323,19 +316,34 @@ class pbesinst_structure_graph_algorithm2: public pbesinst_structure_graph_algor
         }
       }
 
+      void enter(const imp& x)
+      {
+        throw mcrl2::runtime_error("Fail to evaluate the expression " + pbes_system::pp(x) + " as the routine Rplus does not expect an implication, which is an internal error.");
+      }
+
       void leave(const imp& x)
       {
-        unexpected(x);
+        enter(x);  // Print an error message, although this should never be reached..
+      }
+
+      void enter(const exists& x)
+      {
+        throw mcrl2::runtime_error("Fail to evaluate the expression " + pbes_system::pp(x) + " as enumeration of this exists is not possible.");
       }
 
       void leave(const exists& x)
       {
-        unexpected(x);
+        enter(x); // Print an error message. 
+      }
+
+      void enter(const forall& x)
+      {
+        throw mcrl2::runtime_error("Fail to evaluate the expression " + pbes_system::pp(x) + " as enumeration of this forall is not possible.");
       }
 
       void leave(const forall& x)
       {
-        unexpected(x);
+        enter(x); // Print an error. 
       }
     };
 
@@ -527,12 +535,11 @@ class pbesinst_structure_graph_algorithm2: public pbesinst_structure_graph_algor
     }
 
     void on_report_equation(const std::size_t thread_index,
-                            std::shared_mutex& realloc_mutex,
                             const propositional_variable_instantiation& X,
                             const pbes_expression& psi, std::size_t k
                            ) override
     {
-      super::on_report_equation(thread_index, realloc_mutex, X, psi, k);
+      super::on_report_equation(thread_index, X, psi, k);
 
       // The structure graph has just been extended, so S[0] and S[1] need to be resized.
       S[0].resize(m_graph_builder.extent());

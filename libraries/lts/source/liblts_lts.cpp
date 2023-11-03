@@ -64,7 +64,7 @@ atermpp::aterm_istream& operator>>(atermpp::aterm_istream& stream, probabilistic
   }
   else
   {
-    state = {};
+    state.clear();
     lps::probabilistic_data_expression probability;
 
     for (std::size_t i = 0; i < value; ++i)
@@ -263,7 +263,7 @@ static void read_lts(atermpp::aterm_istream& stream, LTS& lts)
         throw mcrl2::runtime_error("Attempting to read a probabilistic LTS as a regular LTS.");
       }
     }
-    else if (term.function() == atermpp::detail::g_term_pool().as_list())
+    else if (term.type_is_list())
     {
       // Lists always represent state labels, only need to add the indices.
       lts.add_state(reinterpret_cast<const state_label_lts&>(term));
