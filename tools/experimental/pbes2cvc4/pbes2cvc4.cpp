@@ -1,6 +1,6 @@
 // Author(s): Ruud Koolen
 // Copyright: see the accompanying file COPYING or copy at
-// https://svn.win.tue.nl/trac/MCRL2/browser/trunk/COPYING
+// https://github.com/mCRL2org/mCRL2/blob/master/COPYING
 //
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at
@@ -14,10 +14,10 @@
 #include "pbes2cvc4.h"
 
 #include "mcrl2/utilities/input_output_tool.h"
-#include "mcrl2/bes/pbes_input_tool.h"
 
 #include "mcrl2/pbes/io.h"
 #include "mcrl2/pbes/normalize.h"
+#include "mcrl2/pbes/pbes_input_tool.h"
 
 #include <fstream>
 
@@ -27,7 +27,7 @@ using namespace mcrl2::log;
 using namespace mcrl2::pbes_system;
 using namespace mcrl2::utilities;
 using namespace mcrl2::utilities::tools;
-using namespace mcrl2::bes::tools;
+using namespace mcrl2::pbes_system::tools;
 
 enum goal_t { disjunctiveWitness, disjunctiveAcyclicUnrolling, conjunctiveWitness, conjunctiveAcyclicUnrolling };
 

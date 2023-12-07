@@ -392,7 +392,7 @@ struct is_not_zero
   bool operator()(const data_expression& x) const
   {
     assert(x.sort()==sort_real::real_());
-    return x!=probabilistic_data_expression::zero();
+    return x!=static_cast<const data_expression&>(probabilistic_data_expression::zero());
   }
 };
 
@@ -440,7 +440,7 @@ const next_state_generator::transition_t::state_probability_list next_state_gene
 
       if (result==sort_bool::true_())
       {
-        resulting_state_probability_list.push_front(state_probability_pair(target_state,probabilistic_solution->expression()));
+        resulting_state_probability_list.emplace_front(target_state, lps::probabilistic_data_expression(probabilistic_solution->expression()));
       }
       else if (result!=sort_bool::false_())
       {

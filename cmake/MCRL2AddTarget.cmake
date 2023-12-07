@@ -10,8 +10,6 @@ function(mcrl2_add_library TARGET_NAME)
   # Finds header files, can be glob since it is only used to show headers in MSVC
   file(GLOB_RECURSE TARGET_INCLUDE_FILES "include/*.h")
 
-  # Install the header files for mCRL2 libraries
-  mcrl2_install_header_files(${TARGET_INCLUDE_FILES})
 
   # For dparser grammer files we need to generate a .c file using make_dparser, and include that file as dependency.
   foreach(GRAMMER_FILE ${ARG_DPARSER_SOURCES})
@@ -54,11 +52,17 @@ function(mcrl2_add_library TARGET_NAME)
     mcrl2_add_tests(${TARGET_NAME} "test/" "librarytest")
   endif()
 
-  install(TARGETS ${TARGET_NAME}
-    COMPONENT "Libraries"
-    LIBRARY DESTINATION ${MCRL2_LIBRARY_PATH}
-    ARCHIVE DESTINATION ${MCRL2_ARCHIVE_PATH}
-    FRAMEWORK DESTINATION ${MCRL2_LIBRARY_PATH})
+  if(BUILD_SHARED_LIBS OR MCRL2_ENABLE_JITTYC)
+    # Install the header files for mCRL2 libraries
+    mcrl2_install_header_files(${TARGET_INCLUDE_FILES})
+
+    # Install the libraries only when we are using jittyc, or shared libraries.
+    install(TARGETS ${TARGET_NAME}
+      COMPONENT "Libraries"
+      LIBRARY DESTINATION ${MCRL2_LIBRARY_PATH}
+      ARCHIVE DESTINATION ${MCRL2_ARCHIVE_PATH}
+      FRAMEWORK DESTINATION ${MCRL2_LIBRARY_PATH})
+  endif()
 
 endfunction()
 
@@ -74,12 +78,12 @@ function(mcrl2_add_tool TARGET_NAME)
   set_property(GLOBAL PROPERTY MCRL2_TOOLS "${MCRL2_TOOLS},${TARGET_NAME}")
     
   # Finds header files, can be glob since it is only used to show headers in MSVC
-  file(GLOB_RECURSE TARGET_INCLUDE_FILES "include/*.h")
+  file(GLOB_RECURSE TARGET_INCLUDE_FILES "*.h")
 
   add_executable(${TARGET_NAME} ${ARG_SOURCES} ${TARGET_INCLUDE_FILES})
 
   target_link_libraries(${TARGET_NAME} ${ARG_DEPENDS})
-  target_include_directories(${TARGET_NAME} PUBLIC ".")
+  target_include_directories(${TARGET_NAME} PUBLIC "." "include/")
 
   if(MCRL2_MAN_PAGES)
     mcrl2_add_man_page(${TARGET_NAME})
@@ -119,7 +123,7 @@ function(mcrl2_add_gui_tool TARGET_NAME)
   add_executable(${TARGET_NAME} ${ARG_SOURCES} ${TARGET_INCLUDE_FILES})
 
   target_link_libraries(${TARGET_NAME} ${ARG_DEPENDS})
-  target_include_directories(${TARGET_NAME} PUBLIC ".")
+  target_include_directories(${TARGET_NAME} PUBLIC "." "include/")
 
   if(MCRL2_MAN_PAGES)
     mcrl2_add_man_page(${TARGET_NAME})
@@ -146,6 +150,12 @@ function(mcrl2_add_gui_tool TARGET_NAME)
     COMPONENT "Stable"
     RUNTIME DESTINATION ${MCRL2_RUNTIME_PATH}
     BUNDLE DESTINATION ${MCRL2_BUNDLE_PATH})
+
+  if(WIN32)
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND ${WINDEPLOYQT_EXECUTABLE} --no-translations --no-system-d3d-compiler --no-quick-import $<TARGET_FILE:${TARGET_NAME}>
+      WORKING_DIRECTORY ${MCRL2_TOOL_PATH})
+  endif()
 
 endfunction()
 
@@ -227,7 +237,8 @@ function(mcrl2_add_header_tests TARGET_NAME INCLUDE_DIR EXCLUDE_FILES)
   endforeach()
 endfunction()
 
-# TODO: Document this function.
+# This function adds versions and icon meta data to the executable by adapting the source files.
+# On windows this function adds a .rc file to the input source files.
 function(mcrl2_add_resource_files TARGET_NAME TOOLNAME DESCRIPTION ICON SOURCE_FILES)
   if(MSVC)
     if(NOT ICON)
@@ -237,6 +248,7 @@ function(mcrl2_add_resource_files TARGET_NAME TOOLNAME DESCRIPTION ICON SOURCE_F
     set(ORIGFILENAME ${TARGET_NAME}.exe)
     set(RC_FILE ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_icon.rc)
 
+    # Destructure the version number.
     string(SUBSTRING ${MCRL2_MAJOR_VERSION} 0 4 VERSION_HIHI)
     string(SUBSTRING ${MCRL2_MAJOR_VERSION} 4 -1 VERSION_HILO)
     string(LENGTH ${VERSION_HILO} _vlen)
@@ -256,6 +268,7 @@ function(mcrl2_add_resource_files TARGET_NAME TOOLNAME DESCRIPTION ICON SOURCE_F
     set(ICOFILE ${CMAKE_SOURCE_DIR}/cmake/packaging/icons/${ICON}.ico)
     get_filename_component(ORIGFILENAME ${ORIGFILENAME} NAME)
     configure_file(${CMAKE_SOURCE_DIR}/cmake/packaging/icon.rc.in ${RC_FILE} @ONLY)
+
     set(${SOURCE_FILES} ${${SOURCE_FILES}} ${RC_FILE})
   elseif(APPLE)
     set(ICNS_FILE ${CMAKE_SOURCE_DIR}/cmake/packaging/icons/${ICON}.icns)

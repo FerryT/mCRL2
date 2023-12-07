@@ -6,15 +6,16 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   include(ConfigureMSVC)
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 
-  if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 7.0)
-    message(FATAL_ERROR "GCC version must be at least 7.0.")
+  # We do not test on GCC9 directly, but it used on the mastodont.
+  if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 9.0)
+    message(FATAL_ERROR "GCC version must be at least 9.0.")
   endif()
   include(ConfigureUNIX)
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 
-  if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.0)
-    message(FATAL_ERROR "Clang version must be at least 5.0.")
+  if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 14.0)
+    message(FATAL_ERROR "Clang version must be at least 14.0.")
   endif()
   set(MCRL2_IS_CLANG 1)
   include(ConfigureUNIX)
@@ -40,8 +41,21 @@ if(CMAKE_BUILD_TYPE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo") 
 endif()
 
+# Enable 'thin' link time optimisation when asked
+if(MCRL2_ENABLE_LTO)
+  include(CheckIPOSupported)
+  check_ipo_supported(RESULT supported OUTPUT error)
+
+  if(supported)
+      set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+      set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
+  else()
+      message(STATUS "IPO / LTO not supported: <${error}>")
+  endif()
+endif()
+
 # Add the definition to disable soundness checks when the configuration is set to OFF.
-if(NOT ${MCRL2_ENABLE_DEBUG_SOUNDNESS_CHECKS})
+if(NOT ${MCRL2_ENABLE_SOUNDNESS_CHECKS})
   add_compile_definitions(MCRL2_NO_SOUNDNESS_CHECKS)
 endif()
 
@@ -65,6 +79,12 @@ endif()
 if(MCRL2_SKIP_LONG_TESTS)
   add_compile_definitions(MCRL2_SKIP_LONG_TESTS)
 endif(MCRL2_SKIP_LONG_TESTS)
+
+if(APPLE)
+  # Silence useless OpenGL deprecration warnings on macOS. Some GUI tools use outdated OpenGL and this will 
+  # only be replaced when it is removed.
+  add_compile_definitions(GL_SILENCE_DEPRECATION)
+endif()
 
 # Enable C++17 for all targets.
 set(CMAKE_CXX_STANDARD 17)
