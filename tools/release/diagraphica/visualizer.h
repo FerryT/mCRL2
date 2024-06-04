@@ -90,6 +90,7 @@ class Visualizer : public QOpenGLWidget
     bool m_mouseDrag;               // The mouse is being dragged
     bool m_mouseDragReleased;       // The cursor was released after dragging
     QPoint m_mouseDragStart;        // The position where the drag started, only valid if (m_mouseDrag or m_mouseDragReleased)
+    QPoint m_mouseDragDelta;        // The distance the cursor has travelled since the last move
 
     Qt::Key m_lastKeyCode;
 

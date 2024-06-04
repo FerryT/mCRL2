@@ -204,6 +204,10 @@ void Visualizer::handleMouseEvent(QMouseEvent* e)
     m_mouseDrag = false;
     m_mouseDragReleased = true;
   }
+  if (m_mouseDrag && e->buttons() != Qt::NoButton && e->type() == QEvent::MouseMove)
+  {
+    m_mouseDragDelta = e->pos() - m_lastMouseEvent->pos();
+  }
 
   m_lastMouseEvent = std::make_unique<QMouseEvent>(e->type(), e->pos(), e->globalPosition(), e->button(), e->buttons(), e->modifiers());
 }

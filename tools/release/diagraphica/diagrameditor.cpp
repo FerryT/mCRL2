@@ -19,10 +19,8 @@ int DiagramEditor::szeTxt = 12;
 // -- constructors and destructor -----------------------------------
 
 
-DiagramEditor::DiagramEditor(
-    QWidget *parent,
-    Graph* g):
-  Visualizer(parent, g)
+DiagramEditor::DiagramEditor(QWidget* parent, Graph* graph):
+  Visualizer(parent, graph)
 {
   m_diagram     = new Diagram(this);
   m_editMode    = EDIT_MODE_SELECT;
@@ -30,7 +28,6 @@ DiagramEditor::DiagramEditor(
   m_currentSelectedHandleId = -1;
 
   initContextMenu();
-  setMouseTracking(true); // Needed to paste at the current position with keyboard shortcuts
 }
 
 
@@ -52,6 +49,7 @@ Shape* DiagramEditor::selectedShape()
   }
   return 0;
 }
+
 
 QList<Shape*> DiagramEditor::selectedShapes()
 {
@@ -104,12 +102,12 @@ void DiagramEditor::visualize()
   clear();
   m_diagram->draw<Visualizing>(pixelSize());
 
-  if (m_mouseDrag && m_lastMouseEvent->buttons() == Qt::LeftButton)
+  if (m_mouseDrag)
   {
     double pix = pixelSize();
 
     QPointF start = worldCoordinate(m_mouseDragStart);
-    QPointF stop = worldCoordinate(m_lastMouseEvent->pos());
+    QPointF stop = worldCoordinate(mapFromGlobal(QCursor::pos()));
 
     QRectF gridCoordinates = m_diagram->gridCoordinates();
 
@@ -175,6 +173,7 @@ void DiagramEditor::visualize()
   }
 }
 
+
 void DiagramEditor::generateTextures()
 {
   for (int i = 0; i < m_diagram->shapeCount(); ++i)
@@ -194,6 +193,7 @@ void DiagramEditor::setDiagram(Diagram* dgrm)
   update();
 }
 
+
 void DiagramEditor::setEditMode(int mode)
 {
   m_editMode = mode;
@@ -208,6 +208,7 @@ void DiagramEditor::setEditMode(int mode)
   deselectAll();
   update();
 }
+
 
 void DiagramEditor::setShowGrid(bool show)
 {
@@ -281,6 +282,7 @@ void DiagramEditor::editDof(Shape *shape)
   }
 }
 
+
 void DiagramEditor::editTextSize()
 {
   Shape* s = selectedShape();
@@ -295,6 +297,7 @@ void DiagramEditor::editTextSize()
     }
   }
 }
+
 
 bool DiagramEditor::editNote(Shape* shape)
 {
@@ -348,6 +351,7 @@ void DiagramEditor::copyShapes()
   }
 }
 
+
 void DiagramEditor::pasteShapes()
 {
   if (m_clipBoardList.size() < 1)
@@ -371,7 +375,7 @@ void DiagramEditor::pasteShapes()
   }
 
   // Calculate the offset of the shapes, so that the combined center of the shapes matches the mouse position
-  QPointF mouse = worldCoordinate(m_lastMouseEvent->position());
+  QPointF mouse = worldCoordinate(mapFromGlobal(QCursor::pos()));
   double x = snapIfNeeded(mouse.x() - x1 - (x2 - x1) / 2.0);
   double y = snapIfNeeded(mouse.y() - y1 - (y2 - y1) / 2.0);
 
@@ -388,6 +392,7 @@ void DiagramEditor::pasteShapes()
   update();
 }
 
+
 void DiagramEditor::selectAllShapes()
 {
   for (int i = 0; i < m_diagram->shapeCount() ; ++i)
@@ -396,6 +401,7 @@ void DiagramEditor::selectAllShapes()
   }
   update();
 }
+
 
 void DiagramEditor::deleteShapes()
 {
@@ -409,6 +415,7 @@ void DiagramEditor::deleteShapes()
   update();
 }
 
+
 void DiagramEditor::bringToFront()
 {
   for (int i = 0; i < m_diagram->shapeCount(); ++i)
@@ -420,6 +427,7 @@ void DiagramEditor::bringToFront()
   }
   update();
 }
+
 
 void DiagramEditor::sendToBack()
 {
@@ -433,6 +441,7 @@ void DiagramEditor::sendToBack()
   update();
 }
 
+
 void DiagramEditor::bringForward()
 {
   for (int i = m_diagram->shapeCount()-1 ; i >= 0 ; i--)
@@ -444,6 +453,7 @@ void DiagramEditor::bringForward()
   }
   update();
 }
+
 
 void DiagramEditor::sendBackward()
 {
@@ -457,10 +467,12 @@ void DiagramEditor::sendBackward()
   update();
 }
 
+
 void DiagramEditor::clear()
 {
   VisUtils::clear(QColor(255 * 0.65, 255 * 0.79, 255 * 0.94));
 }
+
 
 double DiagramEditor::snapIfNeeded(double input)
 {
@@ -472,10 +484,12 @@ double DiagramEditor::snapIfNeeded(double input)
   return input;
 }
 
+
 QPointF DiagramEditor::snapIfNeeded(QPointF input)
 {
   return QPointF(snapIfNeeded(input.x()), snapIfNeeded(input.y()));
 }
+
 
 double DiagramEditor::snapAngleIfNeeded(double input)
 {
@@ -486,6 +500,7 @@ double DiagramEditor::snapAngleIfNeeded(double input)
   }
   return input;
 }
+
 
 QRectF DiagramEditor::worldRectangle(QPointF start, QPointF stop)
 {
@@ -539,7 +554,7 @@ void DiagramEditor::createShape()
 {
   deselectAll();
 
-  QRectF rectangle = worldRectangle(m_mouseDragStart, m_lastMouseEvent->pos());
+  QRectF rectangle = worldRectangle(m_mouseDragStart, mapFromGlobal(QCursor::pos()));
   double dX = rectangle.width();
   double dY = rectangle.height();
 
@@ -604,6 +619,7 @@ void DiagramEditor::createShape()
   update();
 }
 
+
 void DiagramEditor::initContextMenu()
 {
   m_popup.clear();
@@ -623,6 +639,7 @@ void DiagramEditor::initContextMenu()
   m_popup.addAction("Bring forward", this, SLOT(bringForward()));
   m_popup.addAction("Send backward", this, SLOT(sendBackward()));
 }
+
 
 void DiagramEditor::showContextMenu()
 {
@@ -653,76 +670,165 @@ void DiagramEditor::showContextMenu()
     actions[i]->setEnabled(enabledOptions.indexOf(actions[i]->text()) != -1);
   }
 
-  m_popup.popup(mapToGlobal(m_lastMouseEvent->pos()));
+  m_popup.popup(QCursor::pos());
 }
 
 
 // -- event handlers --------------------------------------------
 
 
-void DiagramEditor::handleMouseEvent(QMouseEvent* e)
+void DiagramEditor::mouseMoveEvent(QMouseEvent* event)
 {
-  Visualizer::handleMouseEvent(e);
+  Visualizer::mouseMoveEvent(event);
 
-  if (e->type() != QEvent::MouseMove || e->buttons() != Qt::NoButton)
+  if (event->buttons() != Qt::NoButton)
   {
-    // redraw in select mode
-    updateSelection();
-    // redraw in render mode
+    const SelectionList selections = getSelection();
+    if (!selections.empty())
+    {
+      const Selection& selection = selections.back();
+      if (m_mouseDrag && event->buttons() == Qt::LeftButton)
+      {
+        if (m_currentSelectedShapeId != -1)
+          // Some dragging is possible
+        {
+          if (m_editMode == EDIT_MODE_SELECT)
+            // Drag the shape or a shape handle
+          {
+            if (m_currentSelectedHandleId == -1 || m_currentSelectedHandleId == Shape::ID_HDL_CTR)
+              // Drag the shape
+            {
+              QRectF rectangle = worldRectangle(event->position() - m_mouseDragDelta, event->position());
+              double dX = rectangle.width();
+              double dY = rectangle.height();
+
+              QList<Shape*> shapes = selectedShapes();
+              for (int i = 0; i < shapes.size(); ++i)
+              {
+                Shape* s = shapes[i];
+                s->setCenter(s->xCenter() + dX, s->yCenter() + dY);
+              }
+            }
+            else
+              // Drag a shape handle
+            {
+              Shape* s = m_diagram->shape(m_currentSelectedShapeId);
+              QPointF position = worldCoordinate(event->position());
+              if (s != 0)
+              {
+                switch (m_currentSelectedHandleId)
+                {
+                case Shape::ID_HDL_TOP_LFT:
+                  handleDragTop(s, position);
+                  handleDragLft(s, position);
+                  break;
+                case Shape::ID_HDL_LFT:
+                  handleDragLft(s, position);
+                  break;
+                case Shape::ID_HDL_BOT_LFT:
+                  handleDragBot(s, position);
+                  handleDragLft(s, position);
+                  break;
+                case Shape::ID_HDL_BOT:
+                  handleDragBot(s, position);
+                  break;
+                case Shape::ID_HDL_BOT_RGT:
+                  handleDragBot(s, position);
+                  handleDragRgt(s, position);
+                  break;
+                case Shape::ID_HDL_RGT:
+                  handleDragRgt(s, position);
+                  break;
+                case Shape::ID_HDL_TOP_RGT:
+                  handleDragTop(s, position);
+                  handleDragRgt(s, position);
+                  break;
+                case Shape::ID_HDL_TOP:
+                  handleDragTop(s, position);
+                  break;
+                case Shape::ID_HDL_ROT_RGT:
+                  handleDragRot(s, position, false);
+                  break;
+                case Shape::ID_HDL_ROT_TOP:
+                  handleDragRot(s, position, true);
+                  break;
+                default:
+                  break;
+                }
+              }
+            }
+          }
+          if ((m_editMode == EDIT_MODE_SELECT || m_editMode == EDIT_MODE_DOF) && m_currentSelectedHandleId != -1)
+            // Drag a DOF handle
+          {
+            Shape* s = m_diagram->shape(m_currentSelectedShapeId);
+            QPointF position = worldCoordinate(event->position());
+            if (s != 0)
+            {
+              switch (m_currentSelectedHandleId)
+              {
+              case Shape::ID_HDL_DOF_END:
+
+                switch (s->drawMode())
+                {
+                case Shape::MODE_EDIT_DOF_XCTR:
+                  handleDragDOFXCtrEnd(s, position);
+                  break;
+                case Shape::MODE_EDIT_DOF_YCTR:
+                  handleDragDOFYCtrEnd(s, position);
+                  break;
+                case Shape::MODE_EDIT_DOF_WTH:
+                  handleDragDOFWthEnd(s, position);
+                  break;
+                case Shape::MODE_EDIT_DOF_HGT:
+                  handleDragDOFHgtEnd(s, position);
+                  break;
+                case Shape::MODE_EDIT_DOF_AGL:
+                  handleDragDOFAglEnd(s, position);
+                  break;
+                default:
+                  break;
+                }
+
+                break;
+              case Shape::ID_HDL_HGE:
+                if (s->drawMode() == Shape::MODE_EDIT_DOF_AGL)
+                {
+                  handleDragDOFHge(s, position);
+                }
+                break;
+              default:
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
     update();
   }
-
-  m_lastMousePos = e->pos();
 }
 
-void DiagramEditor::handleKeyEvent(QKeyEvent* e)
-{
-  Visualizer::handleKeyEvent(e);
-  if (e->type() == QEvent::KeyPress)
-  {
-    if (m_editMode == EDIT_MODE_SELECT && e->matches(QKeySequence::SelectAll))
-    {
-      selectAllShapes();
-    }
-    else if (e->matches(QKeySequence::Cut))
-    {
-      cutShapes();
-    }
-    else if (e->matches(QKeySequence::Copy))
-    {
-      copyShapes();
-    }
-    else if (e->matches(QKeySequence::Paste))
-    {
-      pasteShapes();
-    }
-  }
-  if (e->type() == QEvent::KeyRelease)
-  {
-    if (e->matches(QKeySequence::Delete))
-    {
-      deleteShapes();
-    }
-  }
-  // redraw in render mode
-  update();
-}
 
-void DiagramEditor::handleHits(const std::vector< int > &ids)
+void DiagramEditor::mousePressEvent(QMouseEvent* event)
 {
-  if (m_lastMouseEvent->type() == QEvent::MouseButtonPress)
+  Visualizer::mousePressEvent(event);
+
+  const SelectionList selections = getSelection();
+  if (!selections.empty())
   {
-    if (ids.size() <= 1 || (m_lastMouseEvent->button() == Qt::LeftButton && m_editMode != EDIT_MODE_SELECT && m_editMode != EDIT_MODE_DOF))
-    // Deselect if nothing hit or before shape creation
+    const Selection& selection = selections.back();
+    if (selection.size() <= 1 // The mouse cursor is pointing at Nothing
+      || (event->button() == Qt::LeftButton && m_editMode != EDIT_MODE_SELECT && m_editMode != EDIT_MODE_DOF))
     {
       deselectAll();
     }
-    else if (ids.size() == 2)
+    else if (selection.size() == 2) // The mouse cursor is pointing at a Shape
     {
-      if (m_editMode == EDIT_MODE_SELECT || m_lastMouseEvent->button() == Qt::RightButton)
-      // Select the shape if it was not selected
+      if (m_editMode == EDIT_MODE_SELECT || event->button() == Qt::RightButton)
       {
-        Shape* s = m_diagram->shape(ids[1]);
+        // Select the shape (if it was not already)
+        Shape* s = m_diagram->shape(selection[1]);
         if (s != 0)
         {
           if (s->drawMode() != Shape::MODE_EDIT)
@@ -732,172 +838,66 @@ void DiagramEditor::handleHits(const std::vector< int > &ids)
           }
         }
       }
-      if (m_editMode == EDIT_MODE_SELECT && m_lastMouseEvent->button() == Qt::LeftButton)
-      // Prepare dragging
+      if (m_editMode == EDIT_MODE_SELECT && event->button() == Qt::LeftButton)
       {
-        m_currentSelectedShapeId = ids[1];
+        m_currentSelectedShapeId = selection[1];
         m_currentSelectedHandleId = -1;
       }
     }
-    else // ids.size() > 2
+    else // The mouse cursor is pointing at a Shape Handle
     {
       if (m_editMode == EDIT_MODE_SELECT || m_editMode == EDIT_MODE_DOF)
-      // Prepare dragging of a handle
       {
-        m_currentSelectedShapeId = ids[1];
-        m_currentSelectedHandleId = ids[2];
+        m_currentSelectedShapeId = selection[1];
+        m_currentSelectedHandleId = selection[2];
       }
     }
   }
+  update();
+}
 
-  if (ids.size() >= 2 && m_lastMouseEvent->type() == QEvent::MouseButtonRelease && m_lastMouseEvent->button() == Qt::LeftButton)
+
+void DiagramEditor::mouseReleaseEvent(QMouseEvent* event)
+{
+  Visualizer::mouseReleaseEvent(event);
+
+  const SelectionList selections = getSelection();
+  if (selections.empty())
   {
-    Shape* s = m_diagram->shape(ids[1]);
+    return;
+  }
+  const Selection& selection = selections.back();
+
+  if (selection.size() >= 2 && event->button() == Qt::LeftButton)
+  {
+    Shape* s = m_diagram->shape(selection[1]);
     if (s != 0)
     {
-      if (m_editMode == EDIT_MODE_DOF && ids.size() == 2)
+      if (m_editMode == EDIT_MODE_DOF && selection.size() == 2)
       {
         editDof(s);
       }
-      if ((m_editMode == EDIT_MODE_SELECT || m_editMode == EDIT_MODE_DOF) && ids.size() == 3)
+      if ((m_editMode == EDIT_MODE_SELECT || m_editMode == EDIT_MODE_DOF) && selection.size() == 3)
       {
-        if (s->drawMode() == Shape::MODE_EDIT_DOF_AGL && ids[2] == Shape::ID_HDL_DIR)
+        if (s->drawMode() == Shape::MODE_EDIT_DOF_AGL && selection[2] == Shape::ID_HDL_DIR)
         {
-          s->angleDOF()->setDirection(0-s->angleDOF()->direction());
+          s->angleDOF()->setDirection(0 - s->angleDOF()->direction());
         }
       }
     }
   }
 
-
-  if (m_mouseDrag && m_lastMouseEvent->buttons() == Qt::LeftButton)
-  {
-    if (m_currentSelectedShapeId != -1)
-    // Some dragging is possibile
-    {
-      if (m_editMode == EDIT_MODE_SELECT)
-      // Drag the shape or a shape handle
-      {
-        if (m_currentSelectedHandleId == -1 || m_currentSelectedHandleId == Shape::ID_HDL_CTR)
-        // Drag the shape
-        {
-          QRectF rectangle = worldRectangle(m_lastMousePos, m_lastMouseEvent->pos());
-          double dX = rectangle.width();
-          double dY = rectangle.height();
-
-          QList<Shape*> shapes = selectedShapes();
-          for (int i = 0; i < shapes.size(); ++i)
-          {
-            Shape* s = shapes[i];
-            s->setCenter(s->xCenter()+dX, s->yCenter()+dY);
-          }
-        }
-        else
-        // Drag a shape handle
-        {
-          Shape* s = m_diagram->shape(m_currentSelectedShapeId);
-          if (s != 0)
-          {
-            switch(m_currentSelectedHandleId)
-            {
-              case Shape::ID_HDL_TOP_LFT:
-                handleDragTop(s);
-                handleDragLft(s);
-                break;
-              case Shape::ID_HDL_LFT:
-                handleDragLft(s);
-                break;
-              case Shape::ID_HDL_BOT_LFT:
-                handleDragBot(s);
-                handleDragLft(s);
-                break;
-              case Shape::ID_HDL_BOT:
-                handleDragBot(s);
-                break;
-              case Shape::ID_HDL_BOT_RGT:
-                handleDragBot(s);
-                handleDragRgt(s);
-                break;
-              case Shape::ID_HDL_RGT:
-                handleDragRgt(s);
-                break;
-              case Shape::ID_HDL_TOP_RGT:
-                handleDragTop(s);
-                handleDragRgt(s);
-                break;
-              case Shape::ID_HDL_TOP:
-                handleDragTop(s);
-                break;
-              case Shape::ID_HDL_ROT_RGT:
-                handleDragRot(s, false);
-                break;
-              case Shape::ID_HDL_ROT_TOP:
-                handleDragRot(s, true);
-                break;
-              default:
-                break;
-            }
-          }
-        }
-      }
-      if ((m_editMode == EDIT_MODE_SELECT || m_editMode == EDIT_MODE_DOF) && m_currentSelectedHandleId != -1)
-      // Drag a DOF handle
-      {
-        Shape* s = m_diagram->shape(m_currentSelectedShapeId);
-        if (s != 0)
-        {
-          switch(m_currentSelectedHandleId)
-          {
-            case Shape::ID_HDL_DOF_END:
-
-              switch(s->drawMode())
-              {
-                case Shape::MODE_EDIT_DOF_XCTR:
-                  handleDragDOFXCtrEnd(s);
-                  break;
-                case Shape::MODE_EDIT_DOF_YCTR:
-                  handleDragDOFYCtrEnd(s);
-                  break;
-                case Shape::MODE_EDIT_DOF_WTH:
-                  handleDragDOFWthEnd(s);
-                  break;
-                case Shape::MODE_EDIT_DOF_HGT:
-                  handleDragDOFHgtEnd(s);
-                  break;
-                case Shape::MODE_EDIT_DOF_AGL:
-                  handleDragDOFAglEnd(s);
-                  break;
-                default:
-                  break;
-              }
-
-              break;
-            case Shape::ID_HDL_HGE:
-              if (s->drawMode() == Shape::MODE_EDIT_DOF_AGL)
-              {
-                handleDragDOFHge(s);
-              }
-              break;
-            default:
-              break;
-          }
-        }
-      }
-    }
-  }
-
-
-  if (m_mouseDragReleased && m_lastMouseEvent->button() == Qt::LeftButton && m_currentSelectedShapeId == -1)
-  // Drag ended and no shape or handle was dragged
+  if (m_mouseDragReleased && event->button() == Qt::LeftButton && m_currentSelectedShapeId == -1)
+    // Drag ended and no shape or handle was dragged
   {
     if (m_editMode == EDIT_MODE_SELECT)
-    // We try to select some shapes
+      // We try to select some shapes
     {
       deselectAll();
       for (int i = 0; i < m_diagram->shapeCount(); ++i)
       {
         Shape* s = m_diagram->shape(i);
-        QRectF shape(s->xCenter()-s->xDistance(), s->yCenter()-s->yDistance(), 2.0*s->xDistance(), 2.0*s->yDistance());
+        QRectF shape(s->xCenter() - s->xDistance(), s->yCenter() - s->yDistance(), 2.0 * s->xDistance(), 2.0 * s->yDistance());
 
         if (m_selection.intersects(shape))
         {
@@ -907,34 +907,66 @@ void DiagramEditor::handleHits(const std::vector< int > &ids)
     }
 
     if (m_editMode != EDIT_MODE_SELECT && m_editMode != EDIT_MODE_DOF)
-    // We create a shape
+      // We create a shape
     {
       createShape();
     }
   }
 
-  if (m_lastMouseEvent->type() == QEvent::MouseButtonRelease && m_lastMouseEvent->button() == Qt::RightButton)
+  if (event->button() == Qt::RightButton)
   {
     showContextMenu();
   }
 
-  if (m_lastMouseEvent->buttons() == Qt::NoButton)
-  // Reset the drag information if all buttons are released
+  if (event->buttons() == Qt::NoButton)
+    // Reset the drag information if all buttons are released
   {
     m_currentSelectedShapeId = -1;
     m_currentSelectedHandleId = -1;
   }
+  update();
 }
 
 
-void DiagramEditor::handleDragLft(Shape* s)
+void DiagramEditor::keyPressEvent(QKeyEvent* event)
+{
+  Visualizer::keyPressEvent(event);
+  if (event->matches(QKeySequence::SelectAll) && m_editMode == EDIT_MODE_SELECT)
+  {
+    selectAllShapes();
+  }
+  else if (event->matches(QKeySequence::Cut))
+  {
+    cutShapes();
+  }
+  else if (event->matches(QKeySequence::Copy))
+  {
+    copyShapes();
+  }
+  else if (event->matches(QKeySequence::Paste))
+  {
+    pasteShapes();
+  }
+}
+
+
+void DiagramEditor::keyReleaseEvent(QKeyEvent* event)
+{
+  Visualizer::keyReleaseEvent(event);
+  if (event->matches(QKeySequence::Delete))
+  {
+    deleteShapes();
+  }
+}
+
+
+void DiagramEditor::handleDragLft(Shape* s, const QPointF& position)
 {
   double angle = Utils::degrToRad(s->angle());
 
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
   QPointF rightLocation = QPointF(s->xCenter()+cos(angle)*s->xDistance(), s->yCenter()+sin(angle)*s->xDistance());
 
-  double mouseToRightDistance = snapIfNeeded(Utils::distLinePoint(rightLocation, rightLocation + QPointF(sin(-angle), cos(-angle)), mouseLocation));
+  double mouseToRightDistance = snapIfNeeded(Utils::distLinePoint(rightLocation, rightLocation + QPointF(sin(-angle), cos(-angle)), position));
   QPointF leftLocation = QPointF(rightLocation.x() + mouseToRightDistance*cos(angle), rightLocation.y() + mouseToRightDistance*sin(angle));
 
   QPointF newCenter = (leftLocation + rightLocation) / 2;
@@ -944,14 +976,13 @@ void DiagramEditor::handleDragLft(Shape* s)
 }
 
 
-void DiagramEditor::handleDragBot(Shape* s)
+void DiagramEditor::handleDragBot(Shape* s, const QPointF& position)
 {
   double angle = Utils::degrToRad(s->angle());
 
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
   QPointF topLocation = QPointF(s->xCenter()-sin(angle)*s->yDistance(), s->yCenter()+cos(angle)*s->yDistance());
 
-  double mouseToTopDistance = snapIfNeeded(Utils::distLinePoint(topLocation, topLocation + QPointF(cos(angle), sin(angle)), mouseLocation));
+  double mouseToTopDistance = snapIfNeeded(Utils::distLinePoint(topLocation, topLocation + QPointF(cos(angle), sin(angle)), position));
   QPointF BottomLocation = QPointF(topLocation.x() + mouseToTopDistance*sin(angle), topLocation.y() - mouseToTopDistance*cos(angle));
 
   QPointF newCenter = (BottomLocation + topLocation) / 2;
@@ -961,14 +992,13 @@ void DiagramEditor::handleDragBot(Shape* s)
 }
 
 
-void DiagramEditor::handleDragRgt(Shape* s)
+void DiagramEditor::handleDragRgt(Shape* s, const QPointF& position)
 {
   double angle = Utils::degrToRad(s->angle());
 
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
   QPointF leftLocation = QPointF(s->xCenter()-cos(angle)*s->xDistance(), s->yCenter()-sin(angle)*s->xDistance());
 
-  double mouseToLeftDistance = snapIfNeeded(Utils::distLinePoint(leftLocation, leftLocation + QPointF(sin(-angle), cos(-angle)), mouseLocation));
+  double mouseToLeftDistance = snapIfNeeded(Utils::distLinePoint(leftLocation, leftLocation + QPointF(sin(-angle), cos(-angle)), position));
   QPointF rightLocation = QPointF(leftLocation.x() + mouseToLeftDistance*cos(angle), leftLocation.y() + mouseToLeftDistance*sin(angle));
 
   QPointF newCenter = (rightLocation + leftLocation) / 2;
@@ -978,14 +1008,13 @@ void DiagramEditor::handleDragRgt(Shape* s)
 }
 
 
-void DiagramEditor::handleDragTop(Shape* s)
+void DiagramEditor::handleDragTop(Shape* s, const QPointF& position)
 {
   double angle = Utils::degrToRad(s->angle());
 
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
   QPointF bottomLocation = QPointF(s->xCenter()+sin(angle)*s->yDistance(), s->yCenter()-cos(angle)*s->yDistance());
 
-  double mouseToBottomDistance = snapIfNeeded(Utils::distLinePoint(bottomLocation, bottomLocation + QPointF(cos(angle), sin(angle)), mouseLocation));
+  double mouseToBottomDistance = snapIfNeeded(Utils::distLinePoint(bottomLocation, bottomLocation + QPointF(cos(angle), sin(angle)), position));
   QPointF topLocation = QPointF(bottomLocation.x() + mouseToBottomDistance*sin(angle), bottomLocation.y() - mouseToBottomDistance*cos(angle));
 
   QPointF newCenter = (topLocation + bottomLocation) / 2;
@@ -995,10 +1024,9 @@ void DiagramEditor::handleDragTop(Shape* s)
 }
 
 
-void DiagramEditor::handleDragRot(Shape* s, bool isTop)
+void DiagramEditor::handleDragRot(Shape* s, const QPointF& position, bool isTop)
 {
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
-  QPointF relativeMouseLocation = mouseLocation - QPointF(s->xCenter(), s->yCenter());
+  QPointF relativeMouseLocation = position - QPointF(s->xCenter(), s->yCenter());
   double newAngle = Utils::calcAngleDg(relativeMouseLocation.x(), relativeMouseLocation.y()) + (isTop ? 270.0 : 0);
 
   if ((!isTop && s->xDistance() < 0) || (isTop && s->yDistance() < 0))
@@ -1016,77 +1044,59 @@ void DiagramEditor::handleDragRot(Shape* s, bool isTop)
 }
 
 
-void DiagramEditor::handleDragDOFXCtrEnd(Shape* s)
+void DiagramEditor::handleDragDOFXCtrEnd(Shape* s, const QPointF& position)
 {
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
-  double mouseToCenterDistance = snapIfNeeded(mouseLocation.x() - s->xCenter());
+  double mouseToCenterDistance = snapIfNeeded(position.x() - s->xCenter());
 
   s->xCenterDOF()->setMax(mouseToCenterDistance);
 }
 
 
-void DiagramEditor::handleDragDOFYCtrEnd(Shape* s)
+void DiagramEditor::handleDragDOFYCtrEnd(Shape* s, const QPointF& position)
 {
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
-  double mouseToCenterDistance = snapIfNeeded(mouseLocation.y() - s->yCenter());
+  double mouseToCenterDistance = snapIfNeeded(position.y() - s->yCenter());
 
   s->yCenterDOF()->setMax(mouseToCenterDistance);
 }
 
 
-void DiagramEditor::handleDragDOFWthEnd(Shape* s)
+void DiagramEditor::handleDragDOFWthEnd(Shape* s, const QPointF& position)
 {
   double angle = Utils::degrToRad(s->angle());
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
   QPointF rightLocation = QPointF(s->xCenter()+cos(angle)*s->xDistance(), s->yCenter()+sin(angle)*s->xDistance());
-  double mouseToRightDistance = snapIfNeeded(Utils::distLinePoint(rightLocation, rightLocation + QPointF(sin(-angle), cos(-angle)), mouseLocation));
+  double mouseToRightDistance = snapIfNeeded(Utils::distLinePoint(rightLocation, rightLocation + QPointF(sin(-angle), cos(-angle)), position));
 
   s->widthDOF()->setMax(mouseToRightDistance);
 }
 
 
-void DiagramEditor::handleDragDOFHgtEnd(Shape* s)
+void DiagramEditor::handleDragDOFHgtEnd(Shape* s, const QPointF& position)
 {
   double angle = Utils::degrToRad(s->angle());
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
   QPointF topLocation = QPointF(s->xCenter()-sin(angle)*s->yDistance(), s->yCenter()+cos(angle)*s->yDistance());
-  double mouseToTopDistance = snapIfNeeded(Utils::distLinePoint(topLocation, topLocation - QPointF(cos(angle), sin(angle)), mouseLocation));
+  double mouseToTopDistance = snapIfNeeded(Utils::distLinePoint(topLocation, topLocation - QPointF(cos(angle), sin(angle)), position));
 
   s->heightDOF()->setMax(mouseToTopDistance);
 }
 
 
-void DiagramEditor::handleDragDOFHge(Shape* s)
+void DiagramEditor::handleDragDOFHge(Shape* s, const QPointF& position)
 {
-  QPointF mouseLocation = snapIfNeeded(worldCoordinate(m_lastMouseEvent->position()));
   QPointF centerLocation = QPointF(s->xCenter(), s->yCenter());
-  QPointF relativeLocation = mouseLocation - centerLocation;
+  QPointF relativeLocation = snapIfNeeded(position) - centerLocation;
 
   s->setHinge(relativeLocation.x(), relativeLocation.y());
 }
 
 
-void DiagramEditor::handleDragDOFAglEnd(Shape* s)
+void DiagramEditor::handleDragDOFAglEnd(Shape* s, const QPointF& position)
 {
-  QPointF mouseLocation = worldCoordinate(m_lastMouseEvent->position());
-  QPointF relativeMouseLocation = mouseLocation - QPointF(s->xCenter()+s->xHinge(), s->yCenter()+s->yHinge());
+  QPointF relativeMouseLocation = position - QPointF(s->xCenter()+s->xHinge(), s->yCenter()+s->yHinge());
   double newAngle = Utils::calcAngleDg(relativeMouseLocation.x(), relativeMouseLocation.y());
   double offsetAngle = Utils::calcAngleDg(-s->xHinge(), -s->yHinge());
   newAngle = snapAngleIfNeeded(newAngle);
 
   s->angleDOF()->setMax(newAngle-offsetAngle);
 }
-
-
-// -- hit detection -------------------------------------------------
-void DiagramEditor::handleSelection(const Selection& selection)
-{
-  if (!selection.empty())
-  {
-    std::vector<int> hits(selection.begin(), selection.end());
-    handleHits(hits);
-  }
-}
-
 
 // -- end -----------------------------------------------------------

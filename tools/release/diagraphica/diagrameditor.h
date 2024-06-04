@@ -23,9 +23,7 @@ class DiagramEditor : public Visualizer
 
   public:
     // -- constructors and destructor -------------------------------
-    DiagramEditor(
-      QWidget *parent,
-      Graph* g);
+    DiagramEditor(QWidget* parent, Graph* g);
 
     // -- get functions ---------------------------------------------
     Diagram* diagram()        { return m_diagram; }
@@ -106,29 +104,27 @@ class DiagramEditor : public Visualizer
     void showContextMenu();
 
     // -- event handlers --------------------------------------------
-    void handleMouseEvent(QMouseEvent* e);
-    void handleKeyEvent(QKeyEvent* e);
+    void mouseMoveEvent(QMouseEvent*) override;
+    void mousePressEvent(QMouseEvent*) override;
+    void mouseReleaseEvent(QMouseEvent*) override;
+    void keyPressEvent(QKeyEvent*) override;
+    void keyReleaseEvent(QKeyEvent*) override;
 
-    void handleHits(const std::vector< int > &ids);
+    void handleDragLft(Shape* s, const QPointF& position);
+    void handleDragBot(Shape* s, const QPointF& position);
+    void handleDragRgt(Shape* s, const QPointF& position);
+    void handleDragTop(Shape* s, const QPointF& position);
 
-    void handleDragLft(Shape* s);
-    void handleDragBot(Shape* s);
-    void handleDragRgt(Shape* s);
-    void handleDragTop(Shape* s);
+    void handleDragRot(Shape* s, const QPointF& position, bool isTop);
 
-    void handleDragRot(Shape* s, bool isTop);
-
-    void handleDragDOFXCtrEnd(Shape* s);
-    void handleDragDOFYCtrEnd(Shape* s);
-    void handleDragDOFWthEnd(Shape* s);
-    void handleDragDOFHgtEnd(Shape* s);
-    void handleDragDOFHge(Shape* s);
-    void handleDragDOFAglEnd(Shape* s);
+    void handleDragDOFXCtrEnd(Shape* s, const QPointF& position);
+    void handleDragDOFYCtrEnd(Shape* s, const QPointF& position);
+    void handleDragDOFWthEnd(Shape* s, const QPointF& position);
+    void handleDragDOFHgtEnd(Shape* s, const QPointF& position);
+    void handleDragDOFHge(Shape* s, const QPointF& position);
+    void handleDragDOFAglEnd(Shape* s, const QPointF& position);
 
     QSize sizeHint() const { return QSize(600,600); }
-
-    // -- hit detection ---------------------------------------------
-    virtual void handleSelection(const Selection&) override;
 
     // -- data members ----------------------------------------------
 
@@ -138,7 +134,6 @@ class DiagramEditor : public Visualizer
     int m_editMode;         // Current selected tool
     QRectF m_selection;     // Selection rectangle
 
-    QPoint m_lastMousePos;  // For dragging
     QPointF m_dragDistance; // For dragging
     int m_currentSelectedShapeId;   // If a shape is dragged
     int m_currentSelectedHandleId;  // If a handle is dragged
