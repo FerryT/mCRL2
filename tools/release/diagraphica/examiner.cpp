@@ -24,12 +24,9 @@ static const int hgtHstPix = 80;
 // -- constructors and destructor -----------------------------------
 
 
-Examiner::Examiner(
-  QWidget *parent,
-  Settings* s,
-  Graph* g)
-  : Visualizer(parent, g),
-    settings(s)
+Examiner::Examiner(QWidget* parent, Settings* settings, Graph* graph):
+  Visualizer(parent, graph),
+  settings(settings)
 {
   diagram = 0;
   frame = 0;
@@ -93,9 +90,7 @@ std::size_t Examiner::selectedClusterIndex()
 // -- set functions -------------------------------------------------
 
 
-void Examiner::setFrame(
-  Cluster* frme,
-  const std::vector< Attribute*>& attrs,
+void Examiner::setFrame(Cluster* frme, const std::vector<Attribute*>& attrs,
   QColor col)
 {
   delete frame;
@@ -109,7 +104,7 @@ void Examiner::setFrame(
 }
 
 
-void Examiner::clrFrame()
+void Examiner::clearFrame()
 {
   delete frame;
   frame = 0;
@@ -129,9 +124,7 @@ void Examiner::clrFrame()
 }
 
 
-void Examiner::addFrameHist(
-  Cluster* frme,
-  const std::vector< Attribute* >& attrs)
+void Examiner::addFrameHist(Cluster* frme, const std::vector<Attribute*>& attrs)
 {
   // update flag
   dataChanged = true;
@@ -145,9 +138,7 @@ void Examiner::addFrameHist(
 }
 
 
-void Examiner::addFrameHist(
-  QList<Cluster*> frames,
-  const std::vector< Attribute* >& attrs)
+void Examiner::addFrameHist(QList<Cluster*> frames, const std::vector<Attribute*>& attrs)
 {
   for (int i = 0; i < frames.size(); ++i)
   {
@@ -156,8 +147,7 @@ void Examiner::addFrameHist(
 }
 
 
-
-void Examiner::clrFrameHistCur()
+void Examiner::clearFrameHistCur()
 {
   // update flag
   dataChanged = true;
@@ -174,7 +164,7 @@ void Examiner::clrFrameHistCur()
     // update focus
     focusFrameIdx = -1;
 
-    clrFrame();
+    clearFrame();
   }
 
   update();
@@ -192,20 +182,20 @@ void Examiner::clearData()
 // -- event handlers ------------------------------------------------
 
 
-void Examiner::handleSizeEvent()
+void Examiner::resizeEvent(QResizeEvent* event)
 {
-  Visualizer::handleSizeEvent();
+  Visualizer::resizeEvent(event);
 
-  double bdr     = 10;
+  double bdr = 10;
   double pix = pixelSize();
 
   if (posFramesHist.size() > 0)
   {
     // update offset if necessary
-    if ((posFramesHist[posFramesHist.size()-1].x + offset*pix + scaleFramesHist*1.0) < (0.5*worldSize().width() - bdr*pix)  &&
-        (offset < 0))
+    if ((posFramesHist[posFramesHist.size() - 1].x + offset * pix + scaleFramesHist * 1.0) < (0.5 * worldSize().width() - bdr * pix) &&
+      (offset < 0))
     {
-      offset += ((0.5*worldSize().width() - bdr*pix) - (posFramesHist[posFramesHist.size()-1].x + scaleFramesHist*1.0))/pix;
+      offset += ((0.5 * worldSize().width() - bdr * pix) - (posFramesHist[posFramesHist.size() - 1].x + scaleFramesHist * 1.0)) / pix;
 
       if (offset > 0)
       {
@@ -216,34 +206,228 @@ void Examiner::handleSizeEvent()
 }
 
 
-void Examiner::handleMouseEvent(QMouseEvent* e)
+void Examiner::mousePressEvent(QMouseEvent* event)
 {
-  Visualizer::handleMouseEvent(e);
+  Visualizer::mousePressEvent(event);
 
-  // redraw in select mode
-  updateSelection();
-  // redraw in render mode
+  const SelectionList selections = getSelection();
+  if (selections.empty() || selections.back().empty())
+  {
+    QToolTip::hideText();
+  }
+  else
+  {
+    const Selection& selection = selections.back();
+    if (event->button() == Qt::LeftButton)
+    {
+      if (selection[0] == ID_FRAME)
+      {
+        if (selection.size() == 2 && selection[1] == ID_ICON_MORE)
+        {
+          emit routingCluster(frame,
+            makeQList<Cluster*>(framesHist.begin(), framesHist.end()),
+            makeQList<Attribute*>(attributes.begin(), attributes.end()));
+        }
+      }
+      else if (selection.size() > 1 && selection[0] == ID_FRAME_HIST)
+      {
+        if (focusFrameIdx == static_cast <std::size_t>(selection[1]))
+        {
+          focusFrameIdx = -1;
+          clearFrame();
+        }
+        else
+        {
+          focusFrameIdx = selection[1];
+
+          setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
+        }
+      }
+      else if (selection.back() == ID_ICON_CLR)
+      {
+        if (QMessageBox::question(this, "Confirm examiner clear", "Are you sure you want to clear the examiner history?", QMessageBox::Ok | QMessageBox::Cancel) == QMessageBox::Ok)
+        {
+          dataChanged = true;
+
+          for (std::size_t i = 0; i < framesHist.size(); ++i)
+          {
+            delete framesHist[i];
+          }
+          framesHist.clear();
+          attrsHist.clear();
+
+          focusFrameIdx = -1;
+          offset = 0;
+
+          update();
+        }
+      }
+      else if (selection.back() == ID_ICON_RWND)
+      {
+        handleIconRwnd();
+      }
+      else if (selection.back() == ID_ICON_LFT)
+      {
+        handleIconLft();
+      }
+      else if (selection.back() == ID_ICON_RGT)
+      {
+        handleIconRgt();
+      }
+
+    }
+    else if (event->button() == Qt::RightButton)
+      {
+        if (selection[0] == ID_FRAME)
+        {
+          emit routingCluster(frame,
+            makeQList<Cluster*>(framesHist.begin(), framesHist.end()),
+            makeQList<Attribute*>(attributes.begin(), attributes.end()));
+        }
+        else if (selection.size() > 1 && selection[0] == ID_FRAME_HIST)
+        {
+          focusFrameIdx = selection[1];
+
+          setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
+
+          QMenu* menu = new QMenu();
+          connect(menu, SIGNAL(aboutToHide()), menu, SLOT(deleteLater()));
+
+          QAction* deleteCluster = menu->addAction("Delete");
+          connect(deleteCluster, SIGNAL(triggered()), this, SLOT(clearFrameHistCur()));
+
+          menu->popup(QCursor::pos());
+        }
+      }
+  }
   update();
 }
 
 
-void Examiner::handleKeyEvent(QKeyEvent* e)
+void Examiner::keyPressEvent(QKeyEvent* event)
 {
-  Visualizer::handleKeyEvent(e);
+  Visualizer::keyPressEvent(event);
 
-  if (e->type() == QEvent::KeyPress)
+  if (event->key() == Qt::Key_Right)
   {
-    if (e->key() == Qt::Key_Right)
-    {
-      handleIconRgt();
-    }
-    else if (e->key() == Qt::Key_Left)
-    {
-      handleIconLft();
-    }
+    handleIconRgt();
+  }
+  else if (event->key() == Qt::Key_Left)
+  {
+    handleIconLft();
+  }
+  update();
+}
 
-    // redraw in render mode
-    update();
+
+void Examiner::handleIconRwnd()
+{
+  if (framesHist.size() > 0)
+  {
+    focusFrameIdx = 0;
+    offset = 0;
+    geomChanged = true;
+
+    setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
+  }
+  else
+  {
+    offset = 0;
+    geomChanged = true;
+  }
+}
+
+
+void Examiner::handleIconLft()
+{
+  double bdr = 12;
+
+  double pix = pixelSize();
+
+  if (framesHist.size() > 0)
+  {
+    if (focusFrameIdx < framesHist.size())
+    {
+      if (focusFrameIdx != 0)
+      {
+        focusFrameIdx -= 1;
+      }
+
+      double dLft = (-0.5 * worldSize().width() + bdr * pix) - (posFramesHist[focusFrameIdx].x - scaleFramesHist * 1.0);
+      double dRgt = (posFramesHist[focusFrameIdx].x + scaleFramesHist * 1.0 + 4 * pix) - (0.5 * worldSize().width() - bdr * pix);
+      if (dRgt > 0)
+      {
+        offset -= dRgt / pix;
+      }
+      else if (dLft > 0)
+      {
+        offset += dLft / pix;
+      }
+
+      setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
+
+      geomChanged = true;
+    }
+    else
+    {
+      if ((posFramesHist[0].x - scaleFramesHist * 1.0) < (-0.5 * worldSize().width() + bdr * pix))
+      {
+        offset += 10;
+      }
+      geomChanged = true;
+    }
+  }
+  else
+  {
+    offset = 0;
+    geomChanged = true;
+  }
+}
+
+
+void Examiner::handleIconRgt()
+{
+  double bdr = 12;
+
+  double pix = pixelSize();
+
+  if (framesHist.size() > 0)
+  {
+    if (focusFrameIdx < framesHist.size())
+    {
+      if (focusFrameIdx < framesHist.size() - 1)
+      {
+        focusFrameIdx += 1;
+      }
+
+      double dLft = (-0.5 * worldSize().width() + bdr * pix) - (posFramesHist[focusFrameIdx].x - scaleFramesHist * 1.0);
+      double dRgt = (posFramesHist[focusFrameIdx].x + scaleFramesHist * 1.0 + 4 * pix) - (0.5 * worldSize().width() - bdr * pix);
+      if (dRgt > 0)
+      {
+        offset -= dRgt / pix;
+      }
+      else if (dLft > 0)
+      {
+        offset += dLft / pix;
+      }
+
+      setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
+
+      geomChanged = true;
+    }
+    else
+    {
+      if ((posFramesHist[posFramesHist.size() - 1].x + scaleFramesHist * 1.0) > (0.5 * worldSize().width() - bdr * pix))
+      {
+        offset -= 10;
+      }
+      geomChanged = true;
+    }
+  }
+  else
+  {
+    offset = 0;
+    geomChanged = true;
   }
 }
 
@@ -349,224 +533,6 @@ void Examiner::clearFrames()
   // composition
   delete frame;
   frame = 0;
-}
-
-
-// -- hit detection -------------------------------------------------
-
-
-void Examiner::handleHits(const std::vector< int >& ids)
-{
-  if (ids.size() > 0)
-  {
-    if (m_lastMouseEvent->type() == QEvent::MouseButtonPress && m_lastMouseEvent->button() == Qt::LeftButton)
-    {
-      if (ids[0] == ID_FRAME)
-      {
-        if (ids.size() == 2 && ids[1] == ID_ICON_MORE)
-        {
-          emit routingCluster(frame, 
-                              makeQList<Cluster*>(framesHist.begin(), framesHist.end()),
-                              makeQList<Attribute*>(attributes.begin(), attributes.end()));
-        }
-      }
-      else if (ids[0] == ID_FRAME_HIST)
-      {
-        if (focusFrameIdx == static_cast <std::size_t>(ids[1]))
-        {
-          focusFrameIdx = -1;
-          clrFrame();
-        }
-        else
-        {
-          focusFrameIdx = ids[1];
-
-          setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
-        }
-      }
-      else if (ids[ids.size()-1] == ID_ICON_CLR)
-      {
-        if(QMessageBox::question(this, "Confirm examiner clear", "Are you sure you want to clear the examiner history?", QMessageBox::Ok | QMessageBox::Cancel) == QMessageBox::Ok)
-        {
-          dataChanged = true;
-
-          for (std::size_t i = 0; i < framesHist.size(); ++i)
-          {
-            delete framesHist[i];
-          }
-          framesHist.clear();
-          attrsHist.clear();
-
-          focusFrameIdx = -1;
-          offset = 0;
-
-          update();
-        }
-      }
-      else if (ids[ids.size()-1] == ID_ICON_RWND)
-      {
-        handleIconRwnd();
-      }
-      else if (ids[ids.size()-1] == ID_ICON_LFT)
-      {
-        handleIconLft();
-      }
-      else if (ids[ids.size()-1] == ID_ICON_RGT)
-      {
-        handleIconRgt();
-      }
-
-    }
-    else if (m_lastMouseEvent->type() == QEvent::MouseButtonPress && m_lastMouseEvent->button() == Qt::RightButton)
-    {
-      if (ids[0] == ID_FRAME)
-      {
-        emit routingCluster(frame, 
-                            makeQList<Cluster*>(framesHist.begin(), framesHist.end()),
-                            makeQList<Attribute*>(attributes.begin(), attributes.end()));
-      }
-      else if (ids[0] == ID_FRAME_HIST)
-      {
-        focusFrameIdx = ids[1];
-
-        setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
-
-        QMenu *menu = new QMenu();
-        connect(menu, SIGNAL(aboutToHide()), menu, SLOT(deleteLater()));
-
-        QAction *deleteCluster = menu->addAction("Delete");
-        connect(deleteCluster, SIGNAL(triggered()), this, SLOT(clrFrameHistCur()));
-
-        menu->popup(QCursor::pos());
-      }
-    }
-  }
-}
-
-
-void Examiner::handleIconRwnd()
-{
-  if (framesHist.size() > 0)
-  {
-    focusFrameIdx = 0;
-    offset        = 0;
-    geomChanged   = true;
-
-    setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
-  }
-  else
-  {
-    offset      = 0;
-    geomChanged = true;
-  }
-}
-
-
-void Examiner::handleIconLft()
-{
-  double bdr = 12;
-
-  double pix = pixelSize();
-
-  if (framesHist.size() > 0)
-  {
-    if (focusFrameIdx < framesHist.size())
-    {
-      if (focusFrameIdx != 0)
-      {
-        focusFrameIdx -= 1;
-      }
-
-      double dLft = (-0.5*worldSize().width() + bdr*pix) - (posFramesHist[focusFrameIdx].x - scaleFramesHist*1.0);
-      double dRgt = (posFramesHist[focusFrameIdx].x + scaleFramesHist*1.0 + 4*pix) - (0.5*worldSize().width() - bdr*pix);
-      if (dRgt > 0)
-      {
-        offset -= dRgt/pix;
-      }
-      else if (dLft > 0)
-      {
-        offset += dLft/pix;
-      }
-
-      setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
-
-      geomChanged = true;
-    }
-    else
-    {
-      if ((posFramesHist[0].x - scaleFramesHist*1.0) < (-0.5*worldSize().width() + bdr*pix))
-      {
-        offset += 10;
-      }
-      geomChanged = true;
-    }
-  }
-  else
-  {
-    offset = 0;
-    geomChanged = true;
-  }
-}
-
-
-void Examiner::handleIconRgt()
-{
-  double bdr = 12;
-
-  double pix = pixelSize();
-
-  if (framesHist.size() > 0)
-  {
-    if (focusFrameIdx < framesHist.size())
-    {
-      if (focusFrameIdx < framesHist.size()-1)
-      {
-        focusFrameIdx += 1;
-      }
-
-      double dLft = (-0.5*worldSize().width() + bdr*pix) - (posFramesHist[focusFrameIdx].x - scaleFramesHist*1.0);
-      double dRgt = (posFramesHist[focusFrameIdx].x + scaleFramesHist*1.0 + 4*pix) - (0.5*worldSize().width() - bdr*pix);
-      if (dRgt > 0)
-      {
-        offset -= dRgt/pix;
-      }
-      else if (dLft > 0)
-      {
-        offset += dLft/pix;
-      }
-
-      setFrame(framesHist[focusFrameIdx], attrsHist[focusFrameIdx], VisUtils::coolRed);
-
-      geomChanged = true;
-    }
-    else
-    {
-      if ((posFramesHist[posFramesHist.size()-1].x + scaleFramesHist*1.0) > (0.5*worldSize().width() - bdr*pix))
-      {
-        offset -= 10;
-      }
-      geomChanged = true;
-    }
-  }
-  else
-  {
-    offset = 0;
-    geomChanged = true;
-  }
-}
-
-
-void Examiner::handleSelection(const Selection& selection)
-{
-  if (selection.empty())
-  {
-    QToolTip::hideText();
-  }
-  else
-  {
-    std::vector<int> hits(selection.begin(), selection.end());
-    handleHits(hits);
-  }
 }
 
 

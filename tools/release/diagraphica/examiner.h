@@ -20,56 +20,40 @@ class Examiner : public Visualizer
 
   public:
     // -- constructors and destructor -------------------------------
-    Examiner(
-      QWidget *parent,
-      Settings* s,
-      Graph* g);
+    Examiner(QWidget* parent, Settings* settings, Graph* graph);
     virtual ~Examiner();
 
     QColor selectionColor() { return VisUtils::coolRed; }
     std::size_t selectedClusterIndex();
 
     void setDiagram(Diagram* dgrm) { diagram = dgrm; update(); }
-    void setFrame(
-      Cluster* frme,
-      const std::vector< Attribute* > &attrs,
-      QColor col);
-    void clrFrame();
+    void setFrame(Cluster* frme, const std::vector<Attribute*>& attrs, QColor col);
+    void clearFrame();
 
-    void addFrameHist(
-      Cluster* frme,
-      const std::vector< Attribute* > &attrs);
-    void addFrameHist(
-      QList<Cluster*> frames,
-      const std::vector< Attribute* > &attrs);
+    void addFrameHist(Cluster* frme, const std::vector<Attribute*>& attrs);
+    void addFrameHist(QList<Cluster*> frames, const std::vector<Attribute*>& attrs);
 
     // -- visualization functions  ----------------------------------
     void visualize();
     void mark();
 
     // -- event handlers --------------------------------------------
-    void handleSizeEvent();
-
-    void handleMouseEvent(QMouseEvent* e);
-    void handleKeyEvent(QKeyEvent* e);
+    void resizeEvent(QResizeEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 
     QSize sizeHint() const { return QSize(200,200); }
 
   protected slots:
     void clearData();
-    void clrFrameHistCur();
+    void clearFrameHistCur();
 
   signals:
-    void routingCluster(Cluster *cluster, QList<Cluster *> clusterSet, QList<Attribute *> attributes);
+    void routingCluster(Cluster* cluster, QList<Cluster*> clusterSet, QList<Attribute*> attributes);
     void selectionChanged();
 
   private:
     // -- utility functions -----------------------------------------
-    /*
-        void initAttributes( const std::vector< Attribute* > &attrs );
-        void initFrames();
-        void initBundles();
-    */
     void calcSettingsGeomBased();
     void calcSettingsDataBased();
     void calcPosFrame();
@@ -80,14 +64,12 @@ class Examiner : public Visualizer
     void clearFrames();
 
     // -- hit detection ---------------------------------------------
-    void handleHits(const std::vector< int > &ids);
     void handleIconRwnd();
     void handleIconLft();
     /*
     void handleIconPlay();
     */
     void handleIconRgt();
-    virtual void handleSelection(const Selection&) override;
 
     // -- utility drawing functions ---------------------------------
     void clear();

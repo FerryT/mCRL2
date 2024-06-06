@@ -646,7 +646,7 @@ void MainWindow::hoverCluster(Cluster *cluster, QList<Attribute *> attributes)
   }
   else
   {
-    m_examiner->clrFrame();
+    m_examiner->clearFrame();
   }
 }
 
