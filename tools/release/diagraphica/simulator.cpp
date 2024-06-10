@@ -24,12 +24,9 @@ using namespace mcrl2::gui::qt;
 // -- constructors and destructor -----------------------------------
 
 
-Simulator::Simulator(
-  QWidget *parent,
-  Settings* s,
-  Graph* g)
-  : Visualizer(parent, g),
-    m_settings(s)
+Simulator::Simulator(QWidget* parent, Settings* settings, Graph* graph):
+  Visualizer(parent, graph),
+  m_settings(settings)
 {
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   m_diagram   = 0;
@@ -61,7 +58,6 @@ Simulator::~Simulator()
   clearDiagram();
   clearFrames();
   clearBundles();
-
 }
 
 
@@ -111,9 +107,7 @@ void Simulator::setDiagram(Diagram* dgrm)
 }
 
 
-void Simulator::initFrameCurr(
-  Cluster* frame,
-  const std::vector< Attribute* > &attrs)
+void Simulator::initFrameCurr(Cluster* frame, const std::vector<Attribute*>& attrs)
 {
   // clear previous data
   clearAttributes();
@@ -145,9 +139,7 @@ void Simulator::initFrameCurr(
 }
 
 
-void Simulator::updateFrameCurr(
-  Cluster* frame,
-  const Position2D& pos)
+void Simulator::updateFrameCurr(Cluster* frame, const Position2D& pos)
 {
   // init animation data
   m_animationOldFrame    = frame;
@@ -187,20 +179,145 @@ void Simulator::updateFrameCurr(
 // -- event handlers ------------------------------------------------
 
 
-void Simulator::handleMouseEvent(QMouseEvent* e)
+void Simulator::mousePressEvent(QMouseEvent* event)
 {
-  Visualizer::handleMouseEvent(e);
+  Visualizer::mousePressEvent(event);
+  const SelectionList selections = getSelection();
+  if (!selections.empty())
+  {
+    const Selection& selection = selections.back();
+    if (selection.size() > 1)
+    {
+      if (event->button() == Qt::LeftButton)
+      {
+        if (selection[1] == ID_ICON_CLEAR && (m_previousFrames.size() > 0 || m_currentFrame != 0 || m_nextFrames.size() > 0))
+        {
+          if (QMessageBox::question(this, "Confirm simulator clear", "Are you sure you want to clear the simulator?", QMessageBox::Ok | QMessageBox::Cancel) == QMessageBox::Ok)
+          {
+            m_currentSelection = -1;
+            m_currentSelectionIndex = -1;
 
-  // redraw in select mode
-  updateSelection();
-  // redraw in render mode
-  update();
+            m_lastSelection = -1;
+            m_lastSelectionIndexPrevious = -1;
+            m_lastSelectionIndexPrevious = -1;
+
+            m_previousBundleFocusIndex = -1;
+            m_nextBundleFocusIndex = -1;
+
+            clearAttributes();
+            clearFrames();
+            clearBundles();
+          }
+        }
+        else if (selection[1] == ID_ICON_UP)
+        {
+          handleKeyUp();
+        }
+        else if (selection[1] == ID_ICON_NEXT)
+        {
+          handleKeyRgt();
+        }
+        else if (selection[1] == ID_ICON_DOWN)
+        {
+          handleKeyDwn();
+        }
+        else if (selection[1] == ID_ICON_PREV)
+        {
+          handleKeyLft();
+        }
+        markFrameClusts();
+      }
+      if (selection[1] == ID_FRAME_CURR || selection[1] == ID_FRAME_PREV || selection[1] == ID_FRAME_NEXT)
+      {
+        if ((event->button() == Qt::LeftButton && selection.size() > 3 && selection[3] == ID_DIAGRAM_MORE)
+          || event->button() == Qt::RightButton)
+        {
+          m_currentSelection = selection[1];
+
+          if (selection[1] == ID_FRAME_PREV) m_lastSelectionIndexPrevious = m_currentSelectionIndex;
+          if (selection[1] == ID_FRAME_NEXT) m_lastSelectionIndexNext = m_currentSelectionIndex;
+
+          m_lastSelection = m_currentSelection;
+          m_currentSelectionIndex = selection[2];
+
+          Cluster* frame = m_currentSelection == ID_FRAME_PREV ? m_previousFrames[m_currentSelectionIndex] :
+            m_currentSelection == ID_FRAME_NEXT ? m_nextFrames[m_currentSelectionIndex] :
+            m_currentFrame;
+          emit routingCluster(frame, QList<Cluster*>(), makeQList<Attribute*>(m_attributes.begin(), m_attributes.end()));
+        }
+      }
+      update();
+    }
+  }
+}
+
+void Simulator::mouseDoubleClickEvent(QMouseEvent* event)
+{
+  Visualizer::mouseReleaseEvent(event);
+  const SelectionList selections = getSelection();
+  if (!selections.empty())
+  {
+    const Selection& selection = selections.back();
+    if (selection.size() > 1 && event->button() == Qt::LeftButton)
+    {
+      if (selection[1] == ID_FRAME_PREV)
+      {
+        updateFrameCurr(new Cluster(*m_previousFrames[selection[2]]), m_previousFramePositions[selection[2]]);
+      }
+      else if (selection[1] == ID_FRAME_NEXT)
+      {
+        updateFrameCurr(new Cluster(*m_nextFrames[selection[2]]), m_nextFramePositions[selection[2]]);
+      }
+      markFrameClusts();
+      update();
+    }
+  }
+}
+
+void Simulator::mouseMoveEvent(QMouseEvent* event)
+{
+  Visualizer::mouseMoveEvent(event);
+  const SelectionList selections = getSelection();
+  if (selections.empty())
+  {
+    QToolTip::hideText();
+  }
+  else
+  {
+    const Selection& selection = selections.back();
+    if (selection.size() == 1)
+    {
+      if (selection[0] == ID_CANVAS)
+      {
+        if (m_currentSelection != -1 || m_currentSelectionIndex != -1)
+        {
+          m_currentSelection = -1;
+          m_currentSelectionIndex = -1;
+
+          emit hoverCluster(0);
+        }
+
+        m_previousBundleFocusIndex = -1;
+        m_nextBundleFocusIndex = -1;
+      }
+    }
+    else if (selection.size() > 1)
+    {
+      if (selection[1] == ID_BUNDLE_LBL)
+      {
+        m_previousBundleFocusIndex = selection[2];
+        m_nextBundleFocusIndex = selection[2];
+        markFrameClusts();
+      }
+    }
+    update();
+  }
 }
 
 
-void Simulator::handleMouseLeaveEvent()
+void Simulator::leaveEvent(QEvent* event)
 {
-  Visualizer::handleMouseLeaveEvent();
+  Visualizer::leaveEvent(event);
 
   if (!showMenu)
   {
@@ -217,34 +334,33 @@ void Simulator::handleMouseLeaveEvent()
     showMenu = false;
   }
 
-  // redraw in render mode
   update();
 }
 
 
-void Simulator::handleKeyEvent(QKeyEvent* e)
+void Simulator::keyPressEvent(QKeyEvent* event)
 {
-  Visualizer::handleKeyEvent(e);
+  Visualizer::keyPressEvent(event);
 
-  if (!m_animationTimer.isActive() && e->type() == QEvent::KeyPress)
+  if (!m_animationTimer.isActive())
   {
-    if (e->key() == Qt::Key_Up)
+    if (event->key() == Qt::Key_Up)
     {
       handleKeyUp();
     }
-    else if (e->key() == Qt::Key_Right)
+    else if (event->key() == Qt::Key_Right)
     {
       handleKeyRgt();
     }
-    else if (e->key() == Qt::Key_Down)
+    else if (event->key() == Qt::Key_Down)
     {
       handleKeyDwn();
     }
-    else if (e->key() == Qt::Key_Left)
+    else if (event->key() == Qt::Key_Left)
     {
       handleKeyLft();
     }
-    else if (e->key() == Qt::Key_Escape)
+    else if (event->key() == Qt::Key_Escape)
     {
       m_lastSelection = m_currentSelection;
 
@@ -264,13 +380,13 @@ void Simulator::handleKeyEvent(QKeyEvent* e)
     }
 
     markFrameClusts();
-
-    // redraw in render mode
     update();
   }
 }
 
+
 // -- utility functions ---------------------------------------------
+
 
 void Simulator::initFramesPrevNext()
 {
@@ -1136,127 +1252,6 @@ void Simulator::clearBundles()
   m_previousBundlePositionBR.clear();
   m_nextBundlePositionTL.clear();
   m_nextBundlePositionBR.clear();
-}
-
-
-// -- hit detection ---------------------------------------------
-
-
-void Simulator::handleHits(const std::vector< int > &ids)
-{
-  if (ids.size() == 1)
-  {
-    if (ids[0] == ID_CANVAS)
-    {
-      if (m_currentSelection != -1 || m_currentSelectionIndex != -1)
-      {
-        m_currentSelection = -1;
-        m_currentSelectionIndex = -1;
-
-        emit hoverCluster(0);
-      }
-
-      m_previousBundleFocusIndex = -1;
-      m_nextBundleFocusIndex = -1;
-    }
-  }
-  else if (ids.size() > 1)
-  {
-    if (m_lastMouseEvent->button() == Qt::LeftButton)
-    {
-      if (m_lastMouseEvent->type() == QEvent::MouseButtonPress)
-      {
-        if (ids[1] == ID_ICON_CLEAR && (m_previousFrames.size() > 0 || m_currentFrame != 0 || m_nextFrames.size() > 0))
-        {
-          if(QMessageBox::question(this, "Confirm simulator clear", "Are you sure you want to clear the simulator?", QMessageBox::Ok | QMessageBox::Cancel) == QMessageBox::Ok)
-          {
-            m_currentSelection  = -1;
-            m_currentSelectionIndex  = -1;
-
-            m_lastSelection     = -1;
-            m_lastSelectionIndexPrevious = -1;
-            m_lastSelectionIndexPrevious = -1;
-
-            m_previousBundleFocusIndex  = -1;
-            m_nextBundleFocusIndex  = -1;
-
-            clearAttributes();
-            clearFrames();
-            clearBundles();
-          }
-        }
-        else if (ids[1] == ID_ICON_UP)
-        {
-          handleKeyUp();
-        }
-        else if (ids[1] == ID_ICON_NEXT)
-        {
-          handleKeyRgt();
-        }
-        else if (ids[1] == ID_ICON_DOWN)
-        {
-          handleKeyDwn();
-        }
-        else if (ids[1] == ID_ICON_PREV)
-        {
-          handleKeyLft();
-        }
-      }
-      else if (m_lastMouseEvent->type() == QEvent::MouseButtonDblClick)
-      {
-        if (ids[1] == ID_FRAME_PREV)
-        {
-          updateFrameCurr(new Cluster(*m_previousFrames[ids[2]]), m_previousFramePositions[ids[2]]);
-        }
-        else if (ids[1] == ID_FRAME_NEXT)
-        {
-          updateFrameCurr(new Cluster(*m_nextFrames[ids[2]]), m_nextFramePositions[ids[2]]);
-        }
-      }
-    }
-
-    if (ids[1] == ID_FRAME_CURR || ids[1] == ID_FRAME_PREV || ids[1] == ID_FRAME_NEXT)
-    {
-      if (m_lastMouseEvent->type() == QEvent::MouseButtonPress &&
-          ((m_lastMouseEvent->button() == Qt::LeftButton && ids.size() > 3 && ids[3] == ID_DIAGRAM_MORE) ||
-          m_lastMouseEvent->button() == Qt::RightButton))
-      {
-        m_currentSelection      = ids[1];
-
-        if (ids[1] == ID_FRAME_PREV) m_lastSelectionIndexPrevious = m_currentSelectionIndex;
-        if (ids[1] == ID_FRAME_NEXT) m_lastSelectionIndexNext = m_currentSelectionIndex;
-
-        m_lastSelection         = m_currentSelection;
-        m_currentSelectionIndex = ids[2];
-
-        Cluster *frame = m_currentSelection == ID_FRAME_PREV ? m_previousFrames[m_currentSelectionIndex] :
-                         m_currentSelection == ID_FRAME_NEXT ? m_nextFrames[m_currentSelectionIndex] :
-                         m_currentFrame;
-        emit routingCluster(frame, QList<Cluster *>(), makeQList<Attribute*>(m_attributes.begin(), m_attributes.end()));
-      }
-    }
-    else if (ids[1] == ID_BUNDLE_LBL)
-    {
-      m_previousBundleFocusIndex = ids[2];
-      m_nextBundleFocusIndex = ids[2];
-    }
-
-    markFrameClusts();
-  }
-}
-
-
-void Simulator::handleSelection(const Selection& selection)
-{
-  if (selection.empty())
-  {
-    QToolTip::hideText();
-  }
-  else
-  {
-    std::vector<int> hits(selection.begin(), selection.end());
-    handleHits(hits);
-  }
 }
 
 

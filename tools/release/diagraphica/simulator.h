@@ -20,10 +20,7 @@ class Simulator : public Visualizer
 
   public:
     // -- constructors and destructor -------------------------------
-    Simulator(
-      QWidget *parent,
-      Settings* s,
-      Graph* g);
+    Simulator(QWidget* parent, Settings* settings, Graph* graph);
     virtual ~Simulator();
 
 
@@ -32,22 +29,19 @@ class Simulator : public Visualizer
 
     void setDiagram(Diagram* dgrm);
 
-
-    void initFrameCurr(
-      Cluster* frame,
-      const std::vector< Attribute* > &attrs);
-    void updateFrameCurr(
-      Cluster* frame,
-      const Position2D& pos);
+    void initFrameCurr(Cluster* frame, const std::vector<Attribute*>& attrs);
+    void updateFrameCurr(Cluster* frame, const Position2D& pos);
 
     // -- visualization functions  ----------------------------------
     void visualize();
     void mark();
 
     // -- event handlers --------------------------------------------
-    void handleMouseEvent(QMouseEvent* e);
-    void handleMouseLeaveEvent();
-    void handleKeyEvent(QKeyEvent* e);
+    void mousePressEvent(QMouseEvent*) override;
+    void mouseDoubleClickEvent(QMouseEvent*) override;
+    void mouseMoveEvent(QMouseEvent*) override;
+    void keyPressEvent(QKeyEvent*) override;
+    void leaveEvent(QEvent*) override;
 
     QSize sizeHint() const { return QSize(600,200); }
 
@@ -55,11 +49,11 @@ class Simulator : public Visualizer
 
     // -- utility event handlers ------------------------------------
     void onTimer();
-    void reset() { initFrameCurr(0, std::vector< Attribute* >()); }
+    void reset() { initFrameCurr(0, std::vector<Attribute*>()); }
 
   signals:
-    void routingCluster(Cluster *cluster, QList<Cluster *> clusterSet, QList<Attribute *> attributes);
-    void hoverCluster(Cluster *cluster, QList<Attribute *> attributes = QList<Attribute *>());
+    void routingCluster(Cluster* cluster, QList<Cluster*> clusterSet, QList<Attribute*> attributes);
+    void hoverCluster(Cluster* cluster, QList<Attribute*> attributes = QList<Attribute*>());
 
   private:
     // -- utility functions -----------------------------------------
@@ -69,8 +63,6 @@ class Simulator : public Visualizer
 
     void calcSettingsGeomBased();
     void calcSettingsDataBased();
-    void calcIntervals();
-    void calcPositions();
     void calcPosFrames();
     void calcPosBundles();
 
@@ -84,10 +76,6 @@ class Simulator : public Visualizer
     void clearDiagram();
     void clearFrames();
     void clearBundles();
-
-    // -- hit detection ---------------------------------------------
-    void handleHits(const std::vector< int > &ids);
-    virtual void handleSelection(const Selection&) override;
 
     // -- utility drawing functions ---------------------------------
     void clear();

@@ -78,11 +78,11 @@ QColor VisUtils::ListColorMap::operator()(double fraction) const
 
 QColor VisUtils::ListColorMap::operator()(int numerator, int denominator) const
 {
-  if (denominator <= m_colors.size())
+  if (denominator < m_colors.size())
   {
     return m_colors[numerator];
   }
-  return operator()(numerator / (double)(denominator - 1));
+  return operator()(numerator / (double)(denominator));
 }
 
 const VisUtils::BlueYellow VisUtils::blueYellow;
